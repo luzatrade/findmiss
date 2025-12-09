@@ -1,0 +1,526 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// UTENTI
+// ============================================
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password_hash String
+  nickname      String?
+  role          String    @default("user")
+  phone         String?
+  phone_visible Boolean   @default(true)
+  is_active     Boolean   @default(true)
+  is_verified   Boolean   @default(false)
+  ghost_mode    Boolean   @default(false)
+  privacy_mode  String    @default("standard") // standard, anonymous, ghost
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  last_login    DateTime?
+
+  announcements    Announcement[]
+  payments         Payment[]
+  sent_messages    Message[]       @relation("SentMessages")
+  received_messages Message[]      @relation("ReceivedMessages")
+  conversations_as_user1 Conversation[] @relation("User1Conversations")
+  conversations_as_user2 Conversation[] @relation("User2Conversations")
+  likes            Like[]
+  refresh_tokens   RefreshToken[]
+  reviews_written  Review[]        @relation("Reviewer")
+  reviews_received Review[]        @relation("Reviewed")
+  user_sessions    UserSession[]
+  blocked_users    UserBlock[]    @relation("Blocker")
+  blocked_by       UserBlock[]    @relation("Blocked")
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  user_id    String
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model UserSession {
+  id         String   @id @default(uuid())
+  user_id    String?
+  session_id String   @unique
+  selected_city_id String?
+  selected_category_id String?
+  filters    String?  // JSON stringified filters
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  expires_at DateTime
+
+  user  User?  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  city  City?  @relation(fields: [selected_city_id], references: [id])
+
+  @@map("user_sessions")
+}
+
+model UserBlock {
+  id          String   @id @default(uuid())
+  blocker_id  String
+  blocked_id  String
+  created_at  DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blocker_id], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blocked_id], references: [id], onDelete: Cascade)
+
+  @@unique([blocker_id, blocked_id])
+  @@map("user_blocks")
+}
+
+// ============================================
+// CITTÀ E CATEGORIE
+// ============================================
+model City {
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
+  region     String?
+  country    String   @default("IT")
+  latitude   Decimal?
+  longitude  Decimal?
+  population Int?
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+
+  announcements Announcement[]
+  user_sessions UserSession[]
+
+  @@index([name])
+  @@index([slug])
+  @@map("cities")
+}
+
+model Category {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  icon          String?
+  display_order Int      @default(0)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  announcements Announcement[]
+
+  @@map("categories")
+}
+
+// ============================================
+// ANNUNCI
+// ============================================
+model Announcement {
+  id          String  @id @default(uuid())
+  user_id     String
+  category_id String?
+  city_id     String?
+
+  title       String
+  description String?
+  stage_name  String?
+
+  // Caratteristiche fisiche
+  age         Int?
+  height      Int?
+  weight      Int?
+  hair_color  String?
+  hair_length String?
+  eye_color   String?
+  ethnicity   String?
+  cup_size    String?
+  language    String?
+  nationality String?
+  smoker      Boolean?
+
+  // Prezzi
+  price_30min   Decimal?
+  price_1hour   Decimal?
+  price_2hour   Decimal?
+  price_night   Decimal?
+  price_videochat Decimal?
+
+  // Disponibilità
+  is_available_now    Boolean @default(false)
+  available_overnight Boolean @default(false)
+  working_hours_start String?
+  working_hours_end   String?
+  available_for       String? // JSON array: ["incontro", "videochat", "entrambi"]
+
+  // Servizi
+  services    String? // JSON array
+
+  // Status e verifiche
+  status       String  @default("pending") // pending, active, suspended, expired
+  is_verified  Boolean @default(false)
+  has_video    Boolean @default(false)
+  has_reviews  Boolean @default(false)
+  has_natural_photo Boolean @default(false)
+  is_vip       Boolean @default(false)
+
+  // Premium
+  premium_level    String    @default("basic") // basic, premium, vip
+  plan_type        String?   // weekly, monthly
+  daily_exits      Int       @default(0)
+  daily_exits_used Int       @default(0)
+  boost_active     Boolean   @default(false)
+  boost_expires_at DateTime?
+  top_page_boost   Boolean   @default(false)
+  top_page_expires_at DateTime?
+  plan_start_date  DateTime?
+  plan_end_date    DateTime?
+
+  // Statistiche
+  views_count      Int @default(0)
+  likes_count      Int @default(0)
+  contacts_count   Int @default(0)
+  avg_view_time    Int @default(0)
+  reel_views       Int @default(0)
+  reel_likes       Int @default(0)
+
+  // Privacy
+  phone_visible    Boolean @default(true)
+  profile_public   Boolean @default(true) // doppio profilo
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user     User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [category_id], references: [id])
+  city     City?     @relation(fields: [city_id], references: [id])
+  media    Media[]
+  likes    Like[]
+  payments Payment[]
+  reviews  Review[]
+  reel_stats ReelStat[]
+  daily_spots DailySpot[]
+  top_page_boosts TopPageBoost[]
+
+  @@index([city_id])
+  @@index([category_id])
+  @@index([status])
+  @@index([premium_level])
+  @@index([created_at])
+  @@index([is_verified])
+  @@index([has_video])
+  @@index([is_available_now])
+  @@map("announcements")
+}
+
+// ============================================
+// MEDIA (Foto e Video)
+// ============================================
+model Media {
+  id              String   @id @default(uuid())
+  announcement_id String?
+  type            String   // image, video
+  url             String
+  thumbnail_url   String?
+  position        Int      @default(0)
+  is_primary      Boolean  @default(false)
+  is_reel         Boolean  @default(false)
+  duration        Int?
+  metadata_removed Boolean  @default(false)
+  ai_processed    Boolean  @default(false)
+  created_at      DateTime @default(now())
+
+  announcement Announcement? @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  @@index([announcement_id])
+  @@map("media")
+}
+
+// ============================================
+// MEDIA PROTETTI (Chat)
+// ============================================
+model ProtectedMedia {
+  id              String   @id @default(uuid())
+  message_id      String
+  media_url       String
+  thumbnail_url   String?
+  type            String   // image, video
+  is_protected    Boolean  @default(true)
+  view_once       Boolean  @default(false)
+  expires_at      DateTime?
+  view_count      Int      @default(0)
+  max_views       Int      @default(1)
+  screenshot_block Boolean @default(true)
+  created_at      DateTime @default(now())
+
+  message Message @relation(fields: [message_id], references: [id], onDelete: Cascade)
+
+  @@index([message_id])
+  @@map("protected_media")
+}
+
+// ============================================
+// LIKES
+// ============================================
+model Like {
+  id              String   @id @default(uuid())
+  user_id         String
+  announcement_id String
+  created_at      DateTime @default(now())
+
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  announcement Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, announcement_id])
+  @@map("likes")
+}
+
+// ============================================
+// RECENSIONI
+// ============================================
+model Review {
+  id              String   @id @default(uuid())
+  announcement_id String
+  reviewer_id     String
+  reviewed_id     String
+  rating          Int      // 1-5
+  comment         String?
+  is_verified     Boolean  @default(false)
+  is_visible      Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  announcement Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+  reviewer     User         @relation("Reviewer", fields: [reviewer_id], references: [id], onDelete: Cascade)
+  reviewed     User         @relation("Reviewed", fields: [reviewed_id], references: [id], onDelete: Cascade)
+
+  @@index([announcement_id])
+  @@index([reviewer_id])
+  @@map("reviews")
+}
+
+// ============================================
+// REEL STATS
+// ============================================
+model ReelStat {
+  id              String   @id @default(uuid())
+  announcement_id String
+  view_count      Int      @default(0)
+  like_count      Int      @default(0)
+  share_count     Int      @default(0)
+  contact_count   Int      @default(0)
+  avg_watch_time  Int      @default(0) // seconds
+  date            DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  @@unique([announcement_id, date])
+  @@index([announcement_id])
+  @@index([date])
+  @@map("reel_stats")
+}
+
+// ============================================
+// PREMIUM PLANS
+// ============================================
+model PremiumPlan {
+  id          String   @id @default(uuid())
+  name        String
+  plan_type   String   // weekly, monthly
+  duration    Int      // days
+  price       Decimal
+  currency    String   @default("EUR")
+  daily_exits Int      @default(0)
+  features    String?  // JSON array
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("premium_plans")
+}
+
+// ============================================
+// DAILY SPOTS (Uscite giornaliere)
+// ============================================
+model DailySpot {
+  id              String   @id @default(uuid())
+  announcement_id String
+  spot_date       DateTime @default(now())
+  spot_time       DateTime
+  position        Int      // posizione nel feed
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  @@index([announcement_id])
+  @@index([spot_date])
+  @@index([spot_time])
+  @@map("daily_spots")
+}
+
+// ============================================
+// TOP PAGE BOOST
+// ============================================
+model TopPageBoost {
+  id              String   @id @default(uuid())
+  announcement_id String
+  start_date      DateTime
+  end_date        DateTime
+  position        Int      @default(1) // 1-5 (top 5)
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  @@index([announcement_id])
+  @@index([start_date])
+  @@index([end_date])
+  @@index([is_active])
+  @@map("top_page_boosts")
+}
+
+// ============================================
+// CHAT
+// ============================================
+model Conversation {
+  id         String   @id @default(uuid())
+  user1_id   String
+  user2_id   String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user1    User      @relation("User1Conversations", fields: [user1_id], references: [id], onDelete: Cascade)
+  user2    User      @relation("User2Conversations", fields: [user2_id], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([user1_id, user2_id])
+  @@map("conversations")
+}
+
+model Message {
+  id              String   @id @default(uuid())
+  conversation_id String
+  sender_id       String
+  receiver_id     String
+  content         String?
+  message_type    String   @default("text") // text, image, video, system
+  is_read         Boolean  @default(false)
+  read_at         DateTime?
+  created_at      DateTime @default(now())
+
+  conversation    Conversation    @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender          User            @relation("SentMessages", fields: [sender_id], references: [id], onDelete: Cascade)
+  receiver        User            @relation("ReceivedMessages", fields: [receiver_id], references: [id], onDelete: Cascade)
+  protected_media ProtectedMedia[]
+
+  @@index([conversation_id])
+  @@index([sender_id])
+  @@index([created_at])
+  @@map("messages")
+}
+
+// ============================================
+// PAGAMENTI
+// ============================================
+model Payment {
+  id                  String   @id @default(uuid())
+  user_id             String
+  announcement_id     String?
+  payment_provider    String   @default("stripe")
+  provider_payment_id String?  @unique
+  amount              Decimal
+  currency            String   @default("EUR")
+  payment_type        String   // premium_plan, daily_exits, top_page_boost
+  plan_details        String?  // JSON: { plan_type, daily_exits, duration }
+  status              String   @default("pending") // pending, completed, failed, refunded
+  metadata            String?  // JSON additional data
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  completed_at        DateTime?
+
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  announcement Announcement? @relation(fields: [announcement_id], references: [id])
+  invoice      Invoice?
+
+  @@index([user_id])
+  @@index([status])
+  @@index([payment_type])
+  @@map("payments")
+}
+
+model Invoice {
+  id          String   @id @default(uuid())
+  payment_id  String   @unique
+  invoice_number String @unique
+  user_id     String
+  amount      Decimal
+  currency    String   @default("EUR")
+  items       String   // JSON array
+  tax_amount  Decimal  @default(0)
+  total       Decimal
+  status      String   @default("draft") // draft, sent, paid, cancelled
+  pdf_url     String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  payment Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([invoice_number])
+  @@map("invoices")
+}
+
+// ============================================
+// NOTIFICHE
+// ============================================
+model Notification {
+  id         String   @id @default(uuid())
+  user_id    String
+  type       String   // message, like, review, payment, announcement_approved, announcement_rejected, premium_expiring, premium_expired
+  title      String
+  message    String
+  data       String?  // JSON additional data
+  is_read    Boolean  @default(false)
+  read_at    DateTime?
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([is_read])
+  @@index([created_at])
+  @@map("notifications")
+}
+
+// ============================================
+// CODICI SCONTO
+// ============================================
+model DiscountCode {
+  id               String    @id @default(uuid())
+  code             String    @unique
+  discount_percent Int?      // Sconto percentuale (es: 20 = 20%)
+  discount_amount  Decimal?  // Sconto fisso in euro
+  max_uses         Int?      // Massimo utilizzi (null = illimitato)
+  used_count       Int       @default(0)
+  applies_to       String    @default("all") // all, premium, boost, announcement
+  min_amount       Decimal?  // Importo minimo per applicare
+  expires_at       DateTime?
+  is_active        Boolean   @default(true)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  @@index([code])
+  @@index([is_active])
+  @@map("discount_codes")
+}

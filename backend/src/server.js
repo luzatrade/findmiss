@@ -6,9 +6,13 @@ const path = require('path');
 const { execSync } = require('child_process');
 require('dotenv').config();
 
-// Esegui migrazioni e seed automaticamente all'avvio (solo in produzione)
-if (process.env.NODE_ENV === 'production') {
-  (async () => {
+const app = express();
+const server = http.createServer(app);
+const PORT = process.env.PORT || 3001;
+
+// Funzione per inizializzare database (migrazioni e seed)
+async function initializeDatabase() {
+  if (process.env.NODE_ENV === 'production') {
     try {
       console.log('🔄 Controllo migrazioni database...');
       execSync('npx prisma migrate deploy', { 
@@ -40,12 +44,8 @@ if (process.env.NODE_ENV === 'production') {
     } catch (error) {
       console.error('⚠️ Errore migrazioni (continua comunque):', error.message);
     }
-  })();
+  }
 }
-
-const app = express();
-const server = http.createServer(app);
-const PORT = process.env.PORT || 3001;
 
 // Inizializza cache Redis (opzionale)
 const { initRedis } = require('./services/cacheService');
@@ -143,12 +143,24 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server con WebSocket
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server avviato su http://localhost:${PORT}`);
-  console.log(`🔌 WebSocket attivo`);
-  console.log(`📁 Upload path: /uploads`);
-  console.log(`🌐 Server accessibile su rete locale`);
+// Avvia server dopo inizializzazione database
+async function startServer() {
+  // Inizializza database prima di avviare il server
+  await initializeDatabase();
+  
+  // Start server con WebSocket
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server avviato su http://localhost:${PORT}`);
+    console.log(`🔌 WebSocket attivo`);
+    console.log(`📁 Upload path: /uploads`);
+    console.log(`🌐 Server accessibile su rete locale`);
+  });
+}
+
+// Avvia tutto
+startServer().catch((error) => {
+  console.error('❌ Errore critico all\'avvio:', error);
+  process.exit(1);
 });
 
 // Avvia scheduler uscite giornaliere (opzionale)

@@ -8,37 +8,39 @@ require('dotenv').config();
 
 // Esegui migrazioni e seed automaticamente all'avvio (solo in produzione)
 if (process.env.NODE_ENV === 'production') {
-  try {
-    console.log('🔄 Controllo migrazioni database...');
-    execSync('npx prisma migrate deploy', { 
-      stdio: 'inherit',
-      cwd: path.join(__dirname, '..')
-    });
-    console.log('✅ Migrazioni verificate!');
-    
-    // Esegui seed solo se il database è vuoto (controlla se ci sono annunci)
+  (async () => {
     try {
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
-      const announcementCount = await prisma.announcement.count();
-      await prisma.$disconnect();
+      console.log('🔄 Controllo migrazioni database...');
+      execSync('npx prisma migrate deploy', { 
+        stdio: 'inherit',
+        cwd: path.join(__dirname, '..')
+      });
+      console.log('✅ Migrazioni verificate!');
       
-      if (announcementCount === 0) {
-        console.log('🌱 Database vuoto, eseguo seed...');
-        execSync('node prisma/seed.js', { 
-          stdio: 'inherit',
-          cwd: path.join(__dirname, '..')
-        });
-        console.log('✅ Database popolato!');
-      } else {
-        console.log(`✅ Database già popolato (${announcementCount} annunci)`);
+      // Esegui seed solo se il database è vuoto
+      try {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        const announcementCount = await prisma.announcement.count();
+        await prisma.$disconnect();
+        
+        if (announcementCount === 0) {
+          console.log('🌱 Database vuoto, eseguo seed...');
+          execSync('node prisma/seed.js', { 
+            stdio: 'inherit',
+            cwd: path.join(__dirname, '..')
+          });
+          console.log('✅ Database popolato!');
+        } else {
+          console.log(`✅ Database già popolato (${announcementCount} annunci)`);
+        }
+      } catch (seedError) {
+        console.log('⚠️ Seed non eseguito (continua comunque):', seedError.message);
       }
-    } catch (seedError) {
-      console.log('⚠️ Seed non eseguito (continua comunque):', seedError.message);
+    } catch (error) {
+      console.error('⚠️ Errore migrazioni (continua comunque):', error.message);
     }
-  } catch (error) {
-    console.error('⚠️ Errore migrazioni (continua comunque):', error.message);
-  }
+  })();
 }
 
 const app = express();

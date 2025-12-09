@@ -5,17 +5,28 @@
 
 // Rileva automaticamente l'URL dell'API basato sull'host corrente
 function getApiUrl() {
-  if (typeof window === 'undefined') {
-    // Server-side: usa localhost
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+  // Se NEXT_PUBLIC_API_URL è definito, usalo (priorità massima)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL
   }
   
-  // Client-side: usa lo stesso host del frontend ma porta 3001
+  if (typeof window === 'undefined') {
+    // Server-side: usa localhost
+    return 'http://localhost:3001/api'
+  }
+  
+  // Client-side: rileva automaticamente
   const hostname = window.location.hostname
+  const protocol = window.location.protocol
   
   // Se siamo su localhost, usa localhost
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+    return 'http://localhost:3001/api'
+  }
+  
+  // Se siamo su findmiss.it o www.findmiss.it, usa api.findmiss.it
+  if (hostname === 'findmiss.it' || hostname === 'www.findmiss.it') {
+    return `${protocol}//api.findmiss.it/api`
   }
   
   // Altrimenti usa l'IP/hostname corrente (per accesso da rete locale/cellulare)

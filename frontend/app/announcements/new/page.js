@@ -26,7 +26,8 @@ export default function NewAnnouncementPage() {
     title: '',
     stage_name: '',
     age: '',
-    category: '',
+    category_id: '', // Cambiato da 'category' a 'category_id'
+    category_slug: '', // Aggiunto per mappare con le categorie hardcoded
     city_id: '',
     description: '',
     price_30min: '',
@@ -99,7 +100,9 @@ export default function NewAnnouncementPage() {
     const newErrors = {}
     
     if (stepNum === 1) {
-      if (!formData.category) newErrors.category = 'Seleziona una categoria'
+      if (!formData.category_id && !formData.category_slug) {
+        newErrors.category = 'Seleziona una categoria'
+      }
     }
     
     if (stepNum === 2) {
@@ -129,7 +132,23 @@ export default function NewAnnouncementPage() {
 
   const nextStep = () => {
     if (validateStep(step)) {
-      setStep(prev => Math.min(prev + 1, 4))
+      setStep(prev => {
+        const next = Math.min(prev + 1, 4)
+        // Scroll to top quando cambi step
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return next
+      })
+    } else {
+      // Scroll to error
+      const firstError = Object.keys(errors)[0]
+      if (firstError) {
+        const errorElement = document.querySelector(`[name="${firstError}"]`) || 
+                            document.querySelector(`[data-field="${firstError}"]`)
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          errorElement.focus()
+        }
+      }
     }
   }
 
@@ -172,8 +191,16 @@ export default function NewAnnouncementPage() {
     setIsSubmitting(true)
 
     try {
-      // Trova la categoria
-      const selectedCategory = categories.find(c => c.slug === formData.category)
+      // Trova la categoria (usa category_id se disponibile, altrimenti cerca per slug)
+      const selectedCategory = formData.category_id 
+        ? categories.find(c => c.id === formData.category_id)
+        : categories.find(c => c.slug === formData.category_slug)
+      
+      if (!selectedCategory) {
+        setErrors({ submit: 'Categoria non valida' })
+        setIsSubmitting(false)
+        return
+      }
       
       // Crea l'annuncio
       const res = await fetch(`${API_URL}/announcements`, {
@@ -184,7 +211,7 @@ export default function NewAnnouncementPage() {
         },
         body: JSON.stringify({
           ...formData,
-          category_id: selectedCategory?.id,
+          category_id: selectedCategory.id,
           age: Number(formData.age),
           height: formData.height ? Number(formData.height) : null,
           weight: formData.weight ? Number(formData.weight) : null,
@@ -283,26 +310,74 @@ export default function NewAnnouncementPage() {
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              {CATEGORIES.map(cat => {
-                const Icon = cat.icon
-                const isSelected = formData.category === cat.id
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => updateField('category', cat.id)}
-                    className={`p-6 rounded-2xl border-2 transition-all ${
-                      isSelected
-                        ? 'border-pink-500 bg-pink-50 shadow-lg'
-                        : 'border-gray-200 bg-white hover:border-pink-300'
-                    }`}
-                  >
-                    <Icon className={`w-8 h-8 mx-auto mb-3 ${isSelected ? 'text-pink-500' : 'text-gray-400'}`} />
-                    <div className="font-semibold text-gray-900">{cat.name}</div>
-                    <div className="text-sm text-gray-500">{cat.description}</div>
-                  </button>
-                )
-              })}
+              {categories.length > 0 ? (
+                categories.map(cat => {
+                  // Trova l'icona corrispondente
+                  const catConfig = CATEGORIES.find(c => c.id === cat.slug)
+                  const Icon = catConfig?.icon || Sparkles
+                  const isSelected = formData.category_id === cat.id
+                  
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        updateField('category_id', cat.id)
+                        updateField('category_slug', cat.slug)
+                        // Rimuovi errori se presenti
+                        if (errors.category) {
+                          setErrors(prev => {
+                            const newErrors = { ...prev }
+                            delete newErrors.category
+                            return newErrors
+                          })
+                        }
+                      }}
+                      className={`p-6 rounded-2xl border-2 transition-all ${
+                        isSelected
+                          ? 'border-pink-500 bg-pink-50 shadow-lg'
+                          : 'border-gray-200 bg-white hover:border-pink-300'
+                      }`}
+                    >
+                      <Icon className={`w-8 h-8 mx-auto mb-3 ${isSelected ? 'text-pink-500' : 'text-gray-400'}`} />
+                      <div className="font-semibold text-gray-900">{cat.name}</div>
+                      <div className="text-sm text-gray-500">{catConfig?.description || ''}</div>
+                    </button>
+                  )
+                })
+              ) : (
+                // Fallback se categorie non caricate
+                CATEGORIES.map(cat => {
+                  const Icon = cat.icon
+                  const isSelected = formData.category_slug === cat.id
+                  
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        updateField('category_slug', cat.id)
+                        if (errors.category) {
+                          setErrors(prev => {
+                            const newErrors = { ...prev }
+                            delete newErrors.category
+                            return newErrors
+                          })
+                        }
+                      }}
+                      className={`p-6 rounded-2xl border-2 transition-all ${
+                        isSelected
+                          ? 'border-pink-500 bg-pink-50 shadow-lg'
+                          : 'border-gray-200 bg-white hover:border-pink-300'
+                      }`}
+                    >
+                      <Icon className={`w-8 h-8 mx-auto mb-3 ${isSelected ? 'text-pink-500' : 'text-gray-400'}`} />
+                      <div className="font-semibold text-gray-900">{cat.name}</div>
+                      <div className="text-sm text-gray-500">{cat.description}</div>
+                    </button>
+                  )
+                })
+              )}
             </div>
             
             {errors.category && (
@@ -460,7 +535,7 @@ export default function NewAnnouncementPage() {
                 </div>
               </div>
 
-              {formData.category === 'virtual' && (
+              {(formData.category_slug === 'virtual' || formData.category_id) && categories.find(c => c.id === formData.category_id)?.slug === 'virtual' && (
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-700">Videochat (€/min)</label>
                   <input

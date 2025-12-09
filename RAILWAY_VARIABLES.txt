@@ -1,0 +1,7 @@
+DATABASE_URL=postgresql://postgres:PzJcYCtZVNrgdZArrDgWSvAruTPNFboj@postgres.railway.internal:5432/railway
+JWT_SECRET=findmiss_super_secret_2024
+JWT_REFRESH_SECRET=findmiss_refresh_2024
+NODE_ENV=production
+PORT=3001
+CORS_ORIGIN=https://findmiss.it,https://www.findmiss.it,https://findmiss.vercel.app
+

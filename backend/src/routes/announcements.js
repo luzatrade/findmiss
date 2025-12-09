@@ -410,9 +410,17 @@ router.get('/:id', optionalAuth, async (req, res) => {
       userLiked = !!like;
     }
 
+    // Calcola rating medio dalle reviews
+    let avgRating = 0;
+    if (announcement.reviews && announcement.reviews.length > 0) {
+      const sum = announcement.reviews.reduce((acc, review) => acc + review.rating, 0);
+      avgRating = sum / announcement.reviews.length;
+    }
+
     // Nascondi telefono se non visibile o utente non autenticato
     const response = {
       ...announcement,
+      avgRating: Math.round(avgRating * 10) / 10, // Arrotonda a 1 decimale
       user: {
         ...announcement.user,
         phone: announcement.user.phone_visible && announcement.user.phone ? announcement.user.phone : null

@@ -37,7 +37,7 @@ const ProfilePage = ({ params }) => {
             city: a.city?.name || 'N/D',
             verified: a.is_verified || false,
             vip: a.is_vip || false,
-            rating: 4.5, // TODO: calcolare dalla media reviews
+            rating: a.avgRating || 0,
             views: a.views_count || 0,
             location: a.city?.latitude && a.city?.longitude 
               ? { lat: Number(a.city.latitude), lng: Number(a.city.longitude) }

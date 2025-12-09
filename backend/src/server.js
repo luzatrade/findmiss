@@ -65,7 +65,10 @@ app.use(helmet({
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',
+    process.env.CORS_ORIGIN || 'http://localhost:3000',
     'http://localhost:3000',
+    'https://findmiss.it',
+    'https://www.findmiss.it',
     /^http:\/\/192\.168\.\d+\.\d+:3000$/,
     /^http:\/\/10\.\d+\.\d+\.\d+:3000$/,
   ],

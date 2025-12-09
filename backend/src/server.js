@@ -3,7 +3,22 @@ const cors = require('cors');
 const helmet = require('helmet');
 const http = require('http');
 const path = require('path');
+const { execSync } = require('child_process');
 require('dotenv').config();
+
+// Esegui migrazioni automaticamente all'avvio (solo in produzione)
+if (process.env.NODE_ENV === 'production') {
+  try {
+    console.log('🔄 Controllo migrazioni database...');
+    execSync('npx prisma migrate deploy', { 
+      stdio: 'inherit',
+      cwd: path.join(__dirname, '..')
+    });
+    console.log('✅ Migrazioni verificate!');
+  } catch (error) {
+    console.error('⚠️ Errore migrazioni (continua comunque):', error.message);
+  }
+}
 
 const app = express();
 const server = http.createServer(app);

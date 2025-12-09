@@ -1,10 +1,7 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-
-// Disabilita pre-rendering statico
-export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Lock, Phone, User, Eye, EyeOff, Loader2, AlertCircle, Check } from 'lucide-react'
 

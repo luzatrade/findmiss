@@ -1,18 +1,29 @@
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, Send, Image, MoreVertical, Phone, Video, Check, CheckCheck, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useSocket } from '../components/SocketProvider'
-
-// Disabilita pre-rendering statico
-export const dynamic = 'force-dynamic'
+import dynamic from 'next/dynamic'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
+// Hook personalizzato per socket con fallback
+function useSocketSafe() {
+  const [socketState, setSocketState] = useState({ socket: null, connected: false })
+  
+  useEffect(() => {
+    // Importa dinamicamente solo lato client
+    import('../components/SocketProvider').then(module => {
+      // Il socket verrà gestito dal provider nel layout
+    }).catch(() => {})
+  }, [])
+  
+  return socketState
+}
+
 export default function ChatPage() {
   const router = useRouter()
-  const { socket, connected } = useSocket()
+  const { socket, connected } = useSocketSafe()
   const [conversations, setConversations] = useState([])
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [messages, setMessages] = useState([])

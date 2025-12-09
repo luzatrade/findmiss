@@ -51,8 +51,23 @@ async function main() {
 
   // Utenti
   console.log('👥 Creazione utenti...');
+  
+  // Crea account admin principale (puoi cambiare email/password)
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@findmiss.it';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
+  
   const users = await Promise.all([
-    prisma.user.create({ data: { email: 'admin@findmiss.it', password_hash: passwordHash, nickname: 'Admin', role: 'admin', is_verified: true } }),
+    prisma.user.create({ 
+      data: { 
+        email: adminEmail, 
+        password_hash: adminPasswordHash, 
+        nickname: 'Admin', 
+        role: 'admin', 
+        is_verified: true,
+        is_active: true
+      } 
+    }),
     prisma.user.create({ data: { email: 'sofia@test.it', password_hash: passwordHash, nickname: 'Sofia', role: 'advertiser', is_verified: true, phone: '+39 333 1234567' } }),
     prisma.user.create({ data: { email: 'giulia@test.it', password_hash: passwordHash, nickname: 'Giulia', role: 'advertiser', is_verified: true, phone: '+39 333 2345678' } }),
     prisma.user.create({ data: { email: 'valentina@test.it', password_hash: passwordHash, nickname: 'Valentina', role: 'advertiser', is_verified: true, phone: '+39 333 3456789' } }),
@@ -328,7 +343,7 @@ async function main() {
   console.log(`   💬 1 conversazione con 3 messaggi`);
   
   console.log('\n📧 Account di test:');
-  console.log('   👑 Admin:        admin@findmiss.it / password123');
+  console.log(`   👑 Admin:        ${adminEmail} / ${adminPassword}`);
   console.log('   💼 Inserzionista: sofia@test.it / password123');
   console.log('   👤 Cliente:      cliente@test.it / password123');
   console.log('\n🎬 Reel disponibili: ' + announcements.filter(a => a.has_video).length);

@@ -6,7 +6,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 require('dotenv').config();
 
-// Esegui migrazioni automaticamente all'avvio (solo in produzione)
+// Esegui migrazioni e seed automaticamente all'avvio (solo in produzione)
 if (process.env.NODE_ENV === 'production') {
   try {
     console.log('🔄 Controllo migrazioni database...');
@@ -15,6 +15,27 @@ if (process.env.NODE_ENV === 'production') {
       cwd: path.join(__dirname, '..')
     });
     console.log('✅ Migrazioni verificate!');
+    
+    // Esegui seed solo se il database è vuoto (controlla se ci sono annunci)
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      const announcementCount = await prisma.announcement.count();
+      await prisma.$disconnect();
+      
+      if (announcementCount === 0) {
+        console.log('🌱 Database vuoto, eseguo seed...');
+        execSync('node prisma/seed.js', { 
+          stdio: 'inherit',
+          cwd: path.join(__dirname, '..')
+        });
+        console.log('✅ Database popolato!');
+      } else {
+        console.log(`✅ Database già popolato (${announcementCount} annunci)`);
+      }
+    } catch (seedError) {
+      console.log('⚠️ Seed non eseguito (continua comunque):', seedError.message);
+    }
   } catch (error) {
     console.error('⚠️ Errore migrazioni (continua comunque):', error.message);
   }

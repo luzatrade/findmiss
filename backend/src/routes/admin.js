@@ -1,6 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
+const bcrypt = require('bcrypt');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -10,6 +11,76 @@ const requireAdmin = async (req, res, next) => {
   // In produzione: if (!req.user || req.user.role !== 'admin')
   next();
 };
+
+// ==========================================
+// ENDPOINT TEMPORANEO: Crea Admin (da rimuovere dopo uso)
+// ==========================================
+
+// POST /api/admin/create-admin - Crea account admin (TEMPORANEO - rimuovere dopo uso)
+router.post('/create-admin', async (req, res) => {
+  try {
+    const { email, password, nickname } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email e password richieste' 
+      });
+    }
+
+    // Verifica se esiste già
+    const existing = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const finalNickname = nickname || 'Admin';
+
+    if (existing) {
+      // Aggiorna account esistente
+      await prisma.user.update({
+        where: { email },
+        data: {
+          password_hash: passwordHash,
+          role: 'admin',
+          is_verified: true,
+          is_active: true,
+          nickname: finalNickname
+        }
+      });
+      
+      return res.json({ 
+        success: true, 
+        message: 'Account aggiornato a admin',
+        data: { email, nickname: finalNickname }
+      });
+    } else {
+      // Crea nuovo account
+      const user = await prisma.user.create({
+        data: {
+          email,
+          password_hash: passwordHash,
+          nickname: finalNickname,
+          role: 'admin',
+          is_verified: true,
+          is_active: true
+        }
+      });
+      
+      return res.json({ 
+        success: true, 
+        message: 'Account admin creato con successo',
+        data: { email, nickname: finalNickname }
+      });
+    }
+  } catch (error) {
+    console.error('Errore creazione admin:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
 
 // ==========================================
 // STATISTICHE

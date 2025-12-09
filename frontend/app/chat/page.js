@@ -1,9 +1,12 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { ArrowLeft, Send, Image, MoreVertical, Phone, Video, Check, CheckCheck, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSocket } from '../components/SocketProvider'
+
+// Disabilita pre-rendering statico
+export const dynamic = 'force-dynamic'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 

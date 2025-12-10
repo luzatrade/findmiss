@@ -39,3 +39,4 @@ Torna qui e dimmi quando hai finito, così procediamo con le migrazioni!
 **Nota**: Se non riesci a connetterti a pgAdmin con la password vecchia, potrebbe essere necessario reimpostare la password tramite il file di configurazione PostgreSQL, ma questo è più complesso. Prova prima con pgAdmin!
 
 
+

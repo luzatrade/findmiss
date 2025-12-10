@@ -100,6 +100,8 @@ export default function NewAnnouncementPage() {
     const newErrors = {}
     
     if (stepNum === 1) {
+      // Debug
+      console.log('Validazione step 1:', { category_id: formData.category_id, category_slug: formData.category_slug })
       if (!formData.category_id && !formData.category_slug) {
         newErrors.category = 'Seleziona una categoria'
       }
@@ -131,24 +133,37 @@ export default function NewAnnouncementPage() {
   }
 
   const nextStep = () => {
-    if (validateStep(step)) {
+    console.log('nextStep chiamato, step corrente:', step)
+    console.log('formData corrente:', formData)
+    
+    const isValid = validateStep(step)
+    console.log('Validazione risultato:', isValid)
+    console.log('Errori:', errors)
+    
+    if (isValid) {
       setStep(prev => {
         const next = Math.min(prev + 1, 4)
+        console.log('Passaggio da step', prev, 'a step', next)
         // Scroll to top quando cambi step
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }, 100)
         return next
       })
     } else {
-      // Scroll to error
-      const firstError = Object.keys(errors)[0]
-      if (firstError) {
-        const errorElement = document.querySelector(`[name="${firstError}"]`) || 
-                            document.querySelector(`[data-field="${firstError}"]`)
-        if (errorElement) {
-          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          errorElement.focus()
+      console.log('Validazione fallita, errori:', errors)
+      // Scroll to error dopo che gli errori sono stati settati
+      setTimeout(() => {
+        const firstError = Object.keys(errors)[0]
+        if (firstError) {
+          const errorElement = document.querySelector(`[name="${firstError}"]`) || 
+                              document.querySelector(`[data-field="${firstError}"]`)
+          if (errorElement) {
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            errorElement.focus()
+          }
         }
-      }
+      }, 100)
     }
   }
 
@@ -322,16 +337,19 @@ export default function NewAnnouncementPage() {
                       key={cat.id}
                       type="button"
                       onClick={() => {
-                        updateField('category_id', cat.id)
-                        updateField('category_slug', cat.slug)
+                        console.log('Categoria selezionata:', cat)
+                        // Aggiorna entrambi i campi in un'unica operazione
+                        setFormData(prev => ({
+                          ...prev,
+                          category_id: cat.id,
+                          category_slug: cat.slug
+                        }))
                         // Rimuovi errori se presenti
-                        if (errors.category) {
-                          setErrors(prev => {
-                            const newErrors = { ...prev }
-                            delete newErrors.category
-                            return newErrors
-                          })
-                        }
+                        setErrors(prev => {
+                          const newErrors = { ...prev }
+                          delete newErrors.category
+                          return newErrors
+                        })
                       }}
                       className={`p-6 rounded-2xl border-2 transition-all ${
                         isSelected
@@ -356,14 +374,17 @@ export default function NewAnnouncementPage() {
                       key={cat.id}
                       type="button"
                       onClick={() => {
-                        updateField('category_slug', cat.id)
-                        if (errors.category) {
-                          setErrors(prev => {
-                            const newErrors = { ...prev }
-                            delete newErrors.category
-                            return newErrors
-                          })
-                        }
+                        console.log('Categoria fallback selezionata:', cat)
+                        // Aggiorna il campo in un'unica operazione
+                        setFormData(prev => ({
+                          ...prev,
+                          category_slug: cat.id
+                        }))
+                        setErrors(prev => {
+                          const newErrors = { ...prev }
+                          delete newErrors.category
+                          return newErrors
+                        })
                       }}
                       className={`p-6 rounded-2xl border-2 transition-all ${
                         isSelected

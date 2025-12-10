@@ -9,11 +9,21 @@ function initializeSocket(server) {
   const io = new Server(server, {
     cors: {
       origin: [
+        // URL esplicito da env (può essere https)
         process.env.FRONTEND_URL || 'http://localhost:3000',
+        process.env.FRONTEND_URL?.replace('http://', 'https://'),
+        // Localhost
         'http://localhost:3000',
+        'https://localhost:3000',
+        // Reti locali
         /^http:\/\/192\.168\.\d+\.\d+:3000$/,
         /^http:\/\/10\.\d+\.\d+\.\d+:3000$/,
-      ],
+        // Dominio pubblico
+        'https://findmiss.it',
+        'https://www.findmiss.it',
+        // Dominio Vercel
+        'https://findmiss.vercel.app'
+      ].filter(Boolean),
       methods: ['GET', 'POST'],
       credentials: true
     },

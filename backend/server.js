@@ -1,17 +1,26 @@
+'use strict';
+
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
+const path = require('path');
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
-// Middleware
+// Middlewares
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Serve uploads (assicurati che la cartella esista)
+const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsDir));
 
 // =============================================
 // AUTH
@@ -123,6 +132,7 @@ function authMiddleware(req, res, next) {
     req.user = { id: payload.userId, role: payload.role };
     next();
   } catch (err) {
+    console.error('Auth error:', err);
     return res.status(401).json({ success: false, error: 'Token non valido' });
   }
 }
@@ -133,7 +143,7 @@ function slugifyCity(name) {
     .trim()
     .normalize('NFD')
     .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
+    .replace(/\s+/g, '-');
 }
 
 // Creazione nuovo annuncio (solo inserzionisti)
@@ -165,14 +175,17 @@ app.post('/api/announcements', authMiddleware, async (req, res) => {
       });
     }
 
+    const numericAge = age !== undefined && age !== null && age !== '' ? Number(age) : null;
+    const numericPrice = Number(price);
+
     const announcement = await prisma.announcement.create({
       data: {
         user_id: req.user.id,
         city_id: cityRecord.id,
         title,
         description: description || null,
-        age: age ? Number(age) : null,
-        price_1hour: Number(price),
+        age: Number.isFinite(numericAge) ? numericAge : null,
+        price_1hour: Number.isFinite(numericPrice) ? numericPrice : null,
         services: Array.isArray(services) ? JSON.stringify(services) : services || null,
         status: 'active',
         is_verified: false,
@@ -219,6 +232,16 @@ function mapAnnouncementSummary(announcement) {
 function mapAnnouncementDetail(announcement) {
   const base = mapAnnouncementSummary(announcement);
 
+  let services = [];
+  if (announcement.services) {
+    try {
+      services = JSON.parse(announcement.services);
+    } catch (err) {
+      console.warn('Impossibile parsare services JSON:', err);
+      services = [];
+    }
+  }
+
   return {
     ...base,
     images: (announcement.media || []).map((m) => m.url),
@@ -229,7 +252,7 @@ function mapAnnouncementDetail(announcement) {
       eyeColor: announcement.eye_color || null,
       cupSize: announcement.cup_size || null,
     },
-    services: announcement.services ? JSON.parse(announcement.services) : [],
+    services,
     availability: announcement.working_hours_start && announcement.working_hours_end
       ? `${announcement.working_hours_start} - ${announcement.working_hours_end}`
       : null,
@@ -250,7 +273,12 @@ app.get('/api/announcements', async (req, res) => {
     };
 
     if (city) {
-      where.city = { name: { equals: city, mode: 'insensitive' } };
+      // filtro relazione city (usa is per relation singola)
+      where.city = {
+        is: {
+          name: { equals: city, mode: 'insensitive' },
+        },
+      };
     }
 
     if (minAge || maxAge) {
@@ -299,8 +327,11 @@ app.get('/api/announcements/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`Richiesta annuncio con ID: ${id}`);
 
+    // converti l'id in number se possibile (Prisma potrebbe aspettarsi integer)
+    const parsedId = Number.isNaN(Number(id)) ? id : Number(id);
+
     const announcement = await prisma.announcement.findUnique({
-      where: { id },
+      where: { id: parsedId },
       include: {
         media: {
           where: { type: 'image' },
@@ -334,16 +365,37 @@ app.get('/api/announcements/:id', async (req, res) => {
 });
 
 // Avvia il server
-app.listen(port, '0.0.0.0', () => {
+const server = app.listen(port, '0.0.0.0', () => {
   console.log(`Server API in esecuzione su http://localhost:${port}`);
   console.log(`Endpoint disponibile: http://localhost:${port}/api/announcements`);
 });
 
+// Graceful shutdown e disconnect prisma
+async function shutdown(signal) {
+  try {
+    console.log(`Ricevuto ${signal}, chiusura server...`);
+    await prisma.$disconnect();
+    server.close(() => {
+      console.log('Server chiuso');
+      process.exit(0);
+    });
+  } catch (err) {
+    console.error('Errore durante shutdown:', err);
+    process.exit(1);
+  }
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
 // Gestione errori non catturati
 process.on('uncaughtException', (err) => {
   console.error('Errore non gestito:', err);
+  // prova a disconnettere prisma e uscire
+  prisma.$disconnect().finally(() => process.exit(1));
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Promise non gestita:', reason);
+  prisma.$disconnect().finally(() => process.exit(1));
 });

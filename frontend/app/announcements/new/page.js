@@ -350,6 +350,11 @@ export default function NewAnnouncementPage() {
                           delete newErrors.category
                           return newErrors
                         })
+                        // Passa automaticamente allo step successivo dopo breve delay
+                        setTimeout(() => {
+                          setStep(2)
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }, 300)
                       }}
                       className={`p-6 rounded-2xl border-2 transition-all ${
                         isSelected
@@ -385,6 +390,11 @@ export default function NewAnnouncementPage() {
                           delete newErrors.category
                           return newErrors
                         })
+                        // Passa automaticamente allo step successivo dopo breve delay
+                        setTimeout(() => {
+                          setStep(2)
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }, 300)
                       }}
                       className={`p-6 rounded-2xl border-2 transition-all ${
                         isSelected

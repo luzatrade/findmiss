@@ -198,19 +198,93 @@ export default function ReelsPage() {
     }
 
     try {
-      await fetch(`${API_URL}/reels/${reelId}/like`, {
+      const res = await fetch(`${API_URL}/reels/${reelId}/like`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
 
-      // Update local state
-      setReels(prev => prev.map(r =>
-        r.id === reelId
-          ? { ...r, reel_likes: (r.reel_likes || 0) + 1, isLiked: true }
-          : r
-      ))
+      const data = await res.json()
+
+      if (data.success) {
+        // Update local state
+        setReels(prev => prev.map(r =>
+          r.id === reelId
+            ? { ...r, reel_likes: (r.reel_likes || 0) + 1, isLiked: true }
+            : r
+        ))
+      } else {
+        alert('Errore nel like')
+      }
     } catch (error) {
       console.error('Errore like:', error)
+      alert('Errore di connessione')
+    }
+  }
+
+  const handleShare = async (reel) => {
+    const shareUrl = `${window.location.origin}/reels?start=${currentIndex}`
+    const shareText = `Guarda questo reel di ${reel.stage_name || reel.title}!`
+
+    // Prova Web Share API (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'FindMiss Reel',
+          text: shareText,
+          url: shareUrl
+        })
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Errore share:', error)
+        }
+      }
+    } else {
+      // Fallback: copia link
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        alert('Link copiato negli appunti!')
+      } catch (error) {
+        alert(`Condividi questo link:\n${shareUrl}`)
+      }
+    }
+  }
+
+  const handleFollow = async (reelId) => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/auth')
+      return
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/announcements/${reelId}/follow`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        // Update local state
+        setReels(prev => prev.map(r =>
+          r.id === reelId
+            ? { ...r, isFollowing: !r.isFollowing }
+            : r
+        ))
+      }
+    } catch (error) {
+      console.error('Errore follow:', error)
+      alert('Errore nel follow')
+    }
+  }
+
+  const handleCall = (reel) => {
+    // Se c'è un numero di telefono, chiama direttamente
+    if (reel.phone) {
+      window.location.href = `tel:${reel.phone}`
+    } else {
+      // Altrimenti vai al profilo
+      router.push(`/profile/${reel.id}#contact`)
     }
   }
 
@@ -445,28 +519,34 @@ export default function ReelsPage() {
 
       {/* Right Side Actions - Ottimizzato per mobile */}
       <div className="absolute right-3 bottom-24 flex flex-col items-center gap-3 z-10">
-        {/* Profile */}
-        <Link
-          href={`/profile/${currentReel.id}`}
-          className="relative"
-        >
-          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white">
-            {currentReel.media?.[0]?.url ? (
-              <img
-                src={currentReel.media[0].url}
-                alt=""
-                className="w-full h-full object-cover"
-              />
+        {/* Profile + Follow */}
+        <div className="relative">
+          <Link href={`/profile/${currentReel.id}`}>
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white">
+              {currentReel.media?.[0]?.url ? (
+                <img
+                  src={currentReel.media[0].url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                  <User className="text-gray-400" size={24} />
+                </div>
+              )}
+            </div>
+          </Link>
+          <button
+            onClick={() => handleFollow(currentReel.id)}
+            className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 bg-pink-500 hover:bg-pink-600 rounded-full flex items-center justify-center transition"
+          >
+            {currentReel.isFollowing ? (
+              <Check size={12} className="text-white" />
             ) : (
-              <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                <User className="text-gray-400" size={24} />
-              </div>
+              <Plus size={12} className="text-white" />
             )}
-          </div>
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 bg-pink-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs">+</span>
-          </div>
-        </Link>
+          </button>
+        </div>
 
         {/* Like */}
         <button
@@ -498,7 +578,10 @@ export default function ReelsPage() {
         </button>
 
         {/* Share */}
-        <button className="flex flex-col items-center gap-0.5">
+        <button
+          onClick={() => handleShare(currentReel)}
+          className="flex flex-col items-center gap-0.5"
+        >
           <div className="p-1.5 text-white">
             <Share2 size={24} />
           </div>
@@ -506,15 +589,15 @@ export default function ReelsPage() {
         </button>
 
         {/* Contact */}
-        <Link
-          href={`/profile/${currentReel.id}#contact`}
+        <button
+          onClick={() => handleCall(currentReel)}
           className="flex flex-col items-center gap-0.5"
         >
-          <div className="p-2.5 bg-pink-500 rounded-full text-white">
+          <div className="p-2.5 bg-pink-500 hover:bg-pink-600 rounded-full text-white transition">
             <Phone size={20} />
           </div>
           <span className="text-white text-[10px] font-medium">Call</span>
-        </Link>
+        </button>
       </div>
 
       {/* Bottom Info */}

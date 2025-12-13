@@ -402,16 +402,14 @@ export default function ReelsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Upload Reel Button - Solo per advertiser */}
-          {isAdvertiser && (
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="p-2 bg-pink-500 hover:bg-pink-600 rounded-full backdrop-blur transition shadow-lg shadow-pink-500/50"
-              title="Carica Reel"
-            >
-              <Plus size={24} className="text-white" />
-            </button>
-          )}
+          {/* Upload Reel Button - TEMPORANEO: sempre visibile */}
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="p-2 bg-pink-500 hover:bg-pink-600 rounded-full backdrop-blur transition shadow-lg shadow-pink-500/50"
+            title="Carica Reel"
+          >
+            <Plus size={24} className="text-white" />
+          </button>
 
           <button
             onClick={() => setIsMuted(!isMuted)}

@@ -283,8 +283,8 @@ export default function ReelsPage() {
     if (reel.phone) {
       window.location.href = `tel:${reel.phone}`
     } else {
-      // Altrimenti vai al profilo
-      router.push(`/profile/${reel.id}#contact`)
+      // Altrimenti vai all'annuncio nella sezione contatti
+      router.push(`/announcements/${reel.id}#contact`)
     }
   }
 
@@ -521,7 +521,7 @@ export default function ReelsPage() {
       <div className="absolute right-3 bottom-24 flex flex-col items-center gap-3 z-10">
         {/* Profile + Follow */}
         <div className="relative">
-          <Link href={`/profile/${currentReel.id}`}>
+          <Link href={`/announcements/${currentReel.id}`}>
             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white">
               {currentReel.media?.[0]?.url ? (
                 <img
@@ -604,7 +604,7 @@ export default function ReelsPage() {
       <div className="absolute bottom-0 left-0 right-20 p-4 z-10">
         {/* User Info */}
         <Link
-          href={`/profile/${currentReel.id}`}
+          href={`/announcements/${currentReel.id}`}
           className="flex items-center gap-3 mb-3"
         >
           <span className="text-white font-bold text-lg">

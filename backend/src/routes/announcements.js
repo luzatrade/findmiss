@@ -538,6 +538,103 @@ router.post('/:id/contact', authenticate, async (req, res) => {
   }
 });
 
+// POST /api/announcements/:id/follow - Segui l'autore dell'annuncio
+router.post('/:id/follow', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const followerId = req.user.id;
+
+    // Trova l'annuncio e il suo proprietario
+    const announcement = await prisma.announcement.findUnique({
+      where: { id },
+      select: { user_id: true }
+    });
+
+    if (!announcement) {
+      return res.status(404).json({
+        success: false,
+        error: 'Annuncio non trovato'
+      });
+    }
+
+    const followingId = announcement.user_id;
+
+    if (followerId === followingId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Non puoi seguire te stesso'
+      });
+    }
+
+    // Verifica se già seguito
+    const existing = await prisma.follow.findUnique({
+      where: {
+        follower_id_following_id: {
+          follower_id: followerId,
+          following_id: followingId
+        }
+      }
+    });
+
+    if (existing) {
+      // Unfollow (toggle)
+      await prisma.follow.delete({
+        where: {
+          follower_id_following_id: {
+            follower_id: followerId,
+            following_id: followingId
+          }
+        }
+      });
+
+      // Aggiorna contatori
+      await prisma.user.update({
+        where: { id: followerId },
+        data: { following_count: { decrement: 1 } }
+      });
+
+      await prisma.user.update({
+        where: { id: followingId },
+        data: { followers_count: { decrement: 1 } }
+      });
+
+      return res.json({
+        success: true,
+        message: 'Non segui più questo utente',
+        isFollowing: false
+      });
+    }
+
+    // Follow
+    await prisma.follow.create({
+      data: {
+        follower_id: followerId,
+        following_id: followingId
+      }
+    });
+
+    // Aggiorna contatori
+    await prisma.user.update({
+      where: { id: followerId },
+      data: { following_count: { increment: 1 } }
+    });
+
+    await prisma.user.update({
+      where: { id: followingId },
+      data: { followers_count: { increment: 1 } }
+    });
+
+    res.json({
+      success: true,
+      message: 'Ora segui questo utente',
+      isFollowing: true
+    });
+  } catch (error) {
+    console.error('Errore follow annuncio:', error);
+    res.status(500).json({ success: false, error: 'Errore server' });
+  }
+});
+
 // Aggiungi route per creazione/modifica
 router.use('/', createRouter);
 

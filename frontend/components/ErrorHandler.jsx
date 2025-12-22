@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import PropTypes from 'prop-types'
 
 export function useErrorHandler() {
   const [error, setError] = useState(null)
@@ -14,6 +15,14 @@ export function useErrorHandler() {
   return { error, handleError, resetError }
 }
 
+/**
+ * ErrorDisplay component
+ * Displays error messages in a modal overlay
+ * @param {Object} props - Component props
+ * @param {Error|null} props.error - Error object to display
+ * @param {Function} [props.onRetry] - Callback function when retry button is clicked
+ * @param {Function} [props.onDismiss] - Callback function when dismiss button is clicked
+ */
 export function ErrorDisplay({ error, onRetry, onDismiss }) {
   if (!error) return null
 
@@ -60,4 +69,12 @@ export function ErrorDisplay({ error, onRetry, onDismiss }) {
       </div>
     </div>
   )
+}
+
+ErrorDisplay.propTypes = {
+  error: PropTypes.shape({
+    message: PropTypes.string
+  }),
+  onRetry: PropTypes.func,
+  onDismiss: PropTypes.func
 }

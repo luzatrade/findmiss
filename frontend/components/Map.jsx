@@ -1,7 +1,21 @@
 'use client';
 import { useState } from 'react';
 import { MapPin } from 'lucide-react';
+import PropTypes from 'prop-types';
 
+/**
+ * Map component
+ * Displays an embedded OpenStreetMap with a marker
+ * @param {Object} props - Component props
+ * @param {Object} [props.center] - Map center coordinates (preferred prop)
+ * @param {number} props.center.lat - Latitude
+ * @param {number} props.center.lng - Longitude
+ * @param {Object} [props.location] - Alternative to center prop
+ * @param {number} props.location.lat - Latitude
+ * @param {number} props.location.lng - Longitude
+ * @param {string} [props.city] - City name to display
+ * @param {number} [props.zoom=13] - Map zoom level
+ */
 export default function Map({ center, location, city, zoom = 13 }) {
   const [mapError, setMapError] = useState(false);
 
@@ -41,4 +55,17 @@ export default function Map({ center, location, city, zoom = 13 }) {
       )}
     </div>
   );
+}
+
+Map.propTypes = {
+  center: PropTypes.shape({
+    lat: PropTypes.number,
+    lng: PropTypes.number
+  }),
+  location: PropTypes.shape({
+    lat: PropTypes.number,
+    lng: PropTypes.number
+  }),
+  city: PropTypes.string,
+  zoom: PropTypes.number
 }

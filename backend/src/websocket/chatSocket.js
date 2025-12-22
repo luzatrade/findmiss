@@ -5,6 +5,32 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+/**
+ * @typedef {Object} SocketUser
+ * @property {string} id - User ID
+ * @property {string} email - User email
+ * @property {string} nickname - User nickname
+ * @property {string} role - User role
+ */
+
+/**
+ * @typedef {Object} MessageData
+ * @property {string} conversation_id - Conversation ID
+ * @property {string} content - Message content
+ * @property {string} [message_type='text'] - Message type (text|image|video)
+ */
+
+/**
+ * @typedef {Object} MessageReadData
+ * @property {string} message_id - Message ID
+ * @property {string} conversation_id - Conversation ID
+ */
+
+/**
+ * Initialize Socket.IO server for real-time chat
+ * @param {import('http').Server} server - HTTP server instance
+ * @returns {import('socket.io').Server} Socket.IO server instance
+ */
 function initializeSocket(server) {
   const io = new Server(server, {
     cors: {
@@ -64,7 +90,10 @@ function initializeSocket(server) {
   io.on('connection', (socket) => {
     console.log(`🔌 Socket connesso: ${socket.id} (User: ${socket.user?.email || 'anonimo'})`);
 
-    // Unisciti a una room conversazione
+    /**
+     * Join a conversation room
+     * @param {string} conversationId - Conversation ID to join
+     */
     socket.on('join_conversation', async (conversationId) => {
       if (!socket.user) {
         socket.emit('error', { message: 'Autenticazione richiesta' });
@@ -91,13 +120,19 @@ function initializeSocket(server) {
       }
     });
 
-    // Lascia una room conversazione
+    /**
+     * Leave a conversation room
+     * @param {string} conversationId - Conversation ID to leave
+     */
     socket.on('leave_conversation', (conversationId) => {
       socket.leave(`conversation:${conversationId}`);
       console.log(`📭 ${socket.user?.email || 'anonimo'} left conversation:${conversationId}`);
     });
 
-    // Nuovo messaggio (alternativo all'API REST)
+    /**
+     * Send a new message (alternative to REST API)
+     * @param {MessageData} data - Message data
+     */
     socket.on('send_message', async (data) => {
       if (!socket.user) {
         socket.emit('error', { message: 'Autenticazione richiesta' });
@@ -153,7 +188,10 @@ function initializeSocket(server) {
       }
     });
 
-    // Typing indicator
+    /**
+     * User started typing
+     * @param {string} conversationId - Conversation ID
+     */
     socket.on('typing_start', (conversationId) => {
       if (!socket.user) return;
       socket.to(`conversation:${conversationId}`).emit('user_typing', {
@@ -162,6 +200,10 @@ function initializeSocket(server) {
       });
     });
 
+    /**
+     * User stopped typing
+     * @param {string} conversationId - Conversation ID
+     */
     socket.on('typing_stop', (conversationId) => {
       if (!socket.user) return;
       socket.to(`conversation:${conversationId}`).emit('user_stopped_typing', {
@@ -169,7 +211,10 @@ function initializeSocket(server) {
       });
     });
 
-    // Messaggio letto
+    /**
+     * Mark message as read
+     * @param {MessageReadData} data - Message read data
+     */
     socket.on('message_read', async (data) => {
       if (!socket.user) return;
 
@@ -194,20 +239,27 @@ function initializeSocket(server) {
       }
     });
 
-    // Online status
+    /**
+     * Set user online status
+     */
     socket.on('set_online', () => {
       if (socket.user) {
         socket.broadcast.emit('user_online', { user_id: socket.user.id });
       }
     });
 
+    /**
+     * Set user offline status
+     */
     socket.on('set_offline', () => {
       if (socket.user) {
         socket.broadcast.emit('user_offline', { user_id: socket.user.id });
       }
     });
 
-    // Disconnessione
+    /**
+     * Handle socket disconnection
+     */
     socket.on('disconnect', () => {
       console.log(`🔌 Socket disconnesso: ${socket.id}`);
       if (socket.user) {

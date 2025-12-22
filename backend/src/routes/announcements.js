@@ -6,7 +6,47 @@ const createRouter = require('./announcements-create');
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// GET /api/announcements - Feed homepage con filtri avanzati
+/**
+ * @typedef {Object} AnnouncementFilters
+ * @property {string} [page='1'] - Page number for pagination
+ * @property {string} [limit='20'] - Number of items per page
+ * @property {string} [city] - City filter
+ * @property {string} [category] - Category filter
+ * @property {string} [is_verified] - Filter verified announcements
+ * @property {string} [has_video] - Filter announcements with video
+ * @property {string} [has_reviews] - Filter announcements with reviews
+ * @property {string} [is_vip] - Filter VIP announcements
+ * @property {string} [has_natural_photo] - Filter natural photos
+ * @property {string} [is_available_now] - Filter available now
+ * @property {string} [available_overnight] - Filter overnight availability
+ * @property {string} [price_min] - Minimum price
+ * @property {string} [price_max] - Maximum price
+ * @property {string} [age_min] - Minimum age
+ * @property {string} [age_max] - Maximum age
+ * @property {string} [cup_size] - Cup size filter
+ * @property {string} [hair_color] - Hair color filter
+ * @property {string} [hair_length] - Hair length filter
+ * @property {string} [eye_color] - Eye color filter
+ * @property {string} [ethnicity] - Ethnicity filter
+ * @property {string} [language] - Language filter
+ * @property {string} [nationality] - Nationality filter
+ * @property {string} [height_min] - Minimum height
+ * @property {string} [height_max] - Maximum height
+ * @property {string} [weight_min] - Minimum weight
+ * @property {string} [weight_max] - Maximum weight
+ * @property {string} [smoker] - Smoker filter
+ * @property {string} [available_for] - Availability type (incontro, videochat, entrambi)
+ * @property {string} [virtual_services] - Virtual services filter
+ * @property {string} [sort='recent'] - Sort order (recent, price_asc, price_desc, etc.)
+ */
+
+/**
+ * GET /api/announcements - Feed homepage con filtri avanzati
+ * @route GET /api/announcements
+ * @param {import('express').Request<{}, {}, {}, AnnouncementFilters>} req - Express request with query params
+ * @param {import('express').Response} res - Express response
+ * @returns {Promise<void>}
+ */
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const {

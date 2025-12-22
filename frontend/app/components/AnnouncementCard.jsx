@@ -1,6 +1,7 @@
 ﻿'use client';
 
-import { MapPin, CheckCircle, Play, Star, Heart, Sparkles, Users, Video } from 'lucide-react';
+import { MapPin, CheckCircle, Play, Star, Heart } from 'lucide-react';
+import PropTypes from 'prop-types';
 
 const CATEGORY_BADGES = {
   miss: { label: 'Miss', class: 'badge-miss' },
@@ -9,6 +10,28 @@ const CATEGORY_BADGES = {
   virtual: { label: 'Virtual', class: 'badge-virtual' },
 }
 
+/**
+ * AnnouncementCard component
+ * Displays a card for an announcement with image, badges, and details
+ * @param {Object} props - Component props
+ * @param {Object} props.announcement - Announcement object
+ * @param {string} props.announcement.id - Announcement ID
+ * @param {string} props.announcement.title - Announcement title
+ * @param {string} [props.announcement.stage_name] - Stage name
+ * @param {number} [props.announcement.age] - Age
+ * @param {number} [props.announcement.price_1hour] - Price per hour
+ * @param {boolean} [props.announcement.is_verified] - Verification status
+ * @param {boolean} [props.announcement.has_video] - Has video
+ * @param {string} [props.announcement.premium_level] - Premium level (vip|premium)
+ * @param {number} [props.announcement.likes_count] - Number of likes
+ * @param {number} [props.announcement.views_count] - Number of views
+ * @param {Array} [props.announcement.media] - Media array
+ * @param {Object} [props.announcement.city] - City object
+ * @param {string} [props.announcement.city.name] - City name
+ * @param {Object} [props.announcement.category] - Category object
+ * @param {string} [props.announcement.category.slug] - Category slug
+ * @param {Function} props.onClick - Click handler function
+ */
 export default function AnnouncementCard({ announcement, onClick }) {
   const primaryMedia = announcement.media?.[0];
   const category = announcement.category?.slug || 'miss';
@@ -100,4 +123,29 @@ export default function AnnouncementCard({ announcement, onClick }) {
       </div>
     </div>
   );
+}
+
+AnnouncementCard.propTypes = {
+  announcement: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired,
+    stage_name: PropTypes.string,
+    age: PropTypes.number,
+    price_1hour: PropTypes.number,
+    is_verified: PropTypes.bool,
+    has_video: PropTypes.bool,
+    premium_level: PropTypes.oneOf(['vip', 'premium', null]),
+    likes_count: PropTypes.number,
+    views_count: PropTypes.number,
+    media: PropTypes.arrayOf(PropTypes.shape({
+      url: PropTypes.string
+    })),
+    city: PropTypes.shape({
+      name: PropTypes.string
+    }),
+    category: PropTypes.shape({
+      slug: PropTypes.string
+    })
+  }).isRequired,
+  onClick: PropTypes.func.isRequired
 }

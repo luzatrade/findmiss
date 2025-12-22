@@ -4,7 +4,29 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// Middleware autenticazione richiesta
+/**
+ * @typedef {Object} User
+ * @property {string} id - User ID
+ * @property {string} email - User email
+ * @property {string} nickname - User nickname
+ * @property {string} role - User role (user|advertiser|admin)
+ * @property {boolean} is_active - Whether user is active
+ * @property {boolean} is_verified - Whether user is verified
+ */
+
+/**
+ * @typedef {Object} JWTPayload
+ * @property {string} userId - User ID from JWT
+ */
+
+/**
+ * Middleware autenticazione richiesta
+ * Verifica il token JWT e aggiunge req.user
+ * @param {import('express').Request & {user?: User}} req - Express request
+ * @param {import('express').Response} res - Express response
+ * @param {import('express').NextFunction} next - Express next function
+ * @returns {Promise<void>}
+ */
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -70,7 +92,14 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-// Middleware autenticazione opzionale
+/**
+ * Middleware autenticazione opzionale
+ * Aggiunge req.user se token valido, altrimenti req.user = null
+ * @param {import('express').Request & {user?: User|null}} req - Express request
+ * @param {import('express').Response} res - Express response
+ * @param {import('express').NextFunction} next - Express next function
+ * @returns {Promise<void>}
+ */
 const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -109,7 +138,12 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
-// Middleware ruolo richiesto
+/**
+ * Middleware ruolo richiesto
+ * Verifica che l'utente autenticato abbia uno dei ruoli specificati
+ * @param {...string} roles - Ruoli permessi (es. 'admin', 'advertiser', 'user')
+ * @returns {import('express').RequestHandler} Express middleware
+ */
 const requireRole = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -130,7 +164,14 @@ const requireRole = (...roles) => {
   };
 };
 
-// Middleware admin
+/**
+ * Middleware admin
+ * Verifica che l'utente sia admin
+ * @param {import('express').Request & {user?: User}} req - Express request
+ * @param {import('express').Response} res - Express response
+ * @param {import('express').NextFunction} next - Express next function
+ * @returns {void}
+ */
 const requireAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ 
@@ -141,7 +182,14 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-// Middleware advertiser o admin
+/**
+ * Middleware advertiser o admin
+ * Verifica che l'utente sia advertiser o admin
+ * @param {import('express').Request & {user?: User}} req - Express request
+ * @param {import('express').Response} res - Express response
+ * @param {import('express').NextFunction} next - Express next function
+ * @returns {void}
+ */
 const requireAdvertiser = (req, res, next) => {
   if (!req.user || !['admin', 'advertiser'].includes(req.user.role)) {
     return res.status(403).json({ 
@@ -152,12 +200,22 @@ const requireAdvertiser = (req, res, next) => {
   next();
 };
 
-// Genera token
+/**
+ * Genera token JWT
+ * @param {string} userId - User ID to encode in token
+ * @param {string} [expiresIn='7d'] - Token expiration time
+ * @returns {string} JWT token
+ */
 const generateToken = (userId, expiresIn = '7d') => {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn });
 };
 
-// Verifica token
+/**
+ * Verifica token JWT
+ * @param {string} token - JWT token to verify
+ * @returns {JWTPayload} Decoded token payload
+ * @throws {Error} If token is invalid or expired
+ */
 const verifyToken = (token) => {
   return jwt.verify(token, JWT_SECRET);
 };

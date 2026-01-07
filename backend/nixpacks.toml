@@ -1,0 +1,12 @@
+# Nixpacks configuration for Railway
+# This ensures Railway uses NIXPACKS builder instead of Railpack
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["npm install", "npx prisma generate"]
+
+[start]
+cmd = "npm run migrate:deploy && node src/server.js"
+

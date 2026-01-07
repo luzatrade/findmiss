@@ -350,6 +350,11 @@ export default function NewAnnouncementPage() {
                           delete newErrors.category
                           return newErrors
                         })
+                        // Passa automaticamente allo step successivo dopo breve delay
+                        setTimeout(() => {
+                          setStep(2)
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }, 300)
                       }}
                       className={`p-6 rounded-2xl border-2 transition-all ${
                         isSelected
@@ -385,6 +390,11 @@ export default function NewAnnouncementPage() {
                           delete newErrors.category
                           return newErrors
                         })
+                        // Passa automaticamente allo step successivo dopo breve delay
+                        setTimeout(() => {
+                          setStep(2)
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }, 300)
                       }}
                       className={`p-6 rounded-2xl border-2 transition-all ${
                         isSelected
@@ -728,7 +738,7 @@ export default function NewAnnouncementPage() {
       </main>
 
       {/* Footer azione */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
         <div className="max-w-3xl mx-auto px-4 py-4 flex gap-3">
           {step > 1 && (
             <button

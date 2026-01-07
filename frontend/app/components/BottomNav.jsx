@@ -24,7 +24,7 @@ export default function BottomNav() {
   }, [pathname])
 
   // Nascondi su alcune pagine
-  const hiddenPaths = ['/auth', '/stories', '/reels']
+  const hiddenPaths = ['/auth', '/stories', '/reels', '/announcements/new']
   const shouldHide = hiddenPaths.some(p => pathname.startsWith(p))
   
   if (shouldHide) return null

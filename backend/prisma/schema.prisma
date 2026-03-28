@@ -15,6 +15,8 @@ model User {
   email         String    @unique
   password_hash String
   nickname      String?
+  avatar_url    String?
+  bio           String?
   role          String    @default("user")
   phone         String?
   phone_visible Boolean   @default(true)
@@ -22,24 +24,28 @@ model User {
   is_verified   Boolean   @default(false)
   ghost_mode    Boolean   @default(false)
   privacy_mode  String    @default("standard") // standard, anonymous, ghost
+  followers_count Int     @default(0)
+  following_count Int     @default(0)
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
   last_login    DateTime?
 
-  announcements    Announcement[]
-  payments         Payment[]
-  sent_messages    Message[]       @relation("SentMessages")
-  received_messages Message[]      @relation("ReceivedMessages")
+  announcements         Announcement[]
+  payments              Payment[]
+  sent_messages         Message[]       @relation("SentMessages")
+  received_messages     Message[]       @relation("ReceivedMessages")
   conversations_as_user1 Conversation[] @relation("User1Conversations")
   conversations_as_user2 Conversation[] @relation("User2Conversations")
-  likes            Like[]
-  refresh_tokens   RefreshToken[]
-  reviews_written  Review[]        @relation("Reviewer")
-  reviews_received Review[]        @relation("Reviewed")
-  user_sessions    UserSession[]
-  blocked_users    UserBlock[]    @relation("Blocker")
-  blocked_by       UserBlock[]    @relation("Blocked")
-  notifications    Notification[]
+  likes                 Like[]
+  refresh_tokens        RefreshToken[]
+  reviews_written       Review[]        @relation("Reviewer")
+  reviews_received      Review[]        @relation("Reviewed")
+  user_sessions         UserSession[]
+  blocked_users         UserBlock[]     @relation("Blocker")
+  blocked_by            UserBlock[]     @relation("Blocked")
+  notifications         Notification[]
+  live_streams          LiveStream[]
+  stories               Story[]
 
   @@map("users")
 }
@@ -211,6 +217,8 @@ model Announcement {
   reel_stats ReelStat[]
   daily_spots DailySpot[]
   top_page_boosts TopPageBoost[]
+  live_streams LiveStream[]
+  stories Story[]
 
   @@index([city_id])
   @@index([category_id])
@@ -221,6 +229,172 @@ model Announcement {
   @@index([has_video])
   @@index([is_available_now])
   @@map("announcements")
+}
+
+// ============================================
+// LIVE STREAMING
+// ============================================
+model LiveStream {
+  id               String    @id @default(uuid())
+  user_id          String
+  announcement_id  String?
+  title            String
+  description      String?
+  thumbnail_url    String?
+  stream_key       String    @unique
+  stream_url       String?
+  playback_url     String?
+  status           String    @default("scheduled")
+  is_private       Boolean   @default(false)
+  is_premium       Boolean   @default(false)
+  price_per_minute Decimal?
+  viewers_count    Int       @default(0)
+  peak_viewers     Int       @default(0)
+  total_views      Int       @default(0)
+  likes_count      Int       @default(0)
+  tips_total       Decimal   @default(0)
+  duration         Int       @default(0)
+  scheduled_at     DateTime?
+  started_at       DateTime?
+  ended_at         DateTime?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  announcement Announcement? @relation(fields: [announcement_id], references: [id], onDelete: SetNull)
+  viewers      LiveViewer[]
+  tips         LiveTip[]
+  messages     LiveMessage[]
+  recordings   LiveRecording[]
+
+  @@index([user_id])
+  @@index([status])
+  @@index([started_at])
+  @@map("live_streams")
+}
+
+model LiveViewer {
+  id         String    @id @default(uuid())
+  stream_id  String
+  user_id    String?
+  session_id String?
+  joined_at  DateTime  @default(now())
+  left_at    DateTime?
+  watch_time Int       @default(0)
+  is_premium Boolean   @default(false)
+
+  stream LiveStream @relation(fields: [stream_id], references: [id], onDelete: Cascade)
+
+  @@index([stream_id])
+  @@index([user_id])
+  @@map("live_viewers")
+}
+
+model LiveTip {
+  id         String   @id @default(uuid())
+  stream_id  String
+  user_id    String
+  amount     Decimal
+  currency   String   @default("EUR")
+  message    String?
+  is_public  Boolean  @default(true)
+  created_at DateTime @default(now())
+
+  stream LiveStream @relation(fields: [stream_id], references: [id], onDelete: Cascade)
+
+  @@index([stream_id])
+  @@index([user_id])
+  @@map("live_tips")
+}
+
+model LiveMessage {
+  id         String   @id @default(uuid())
+  stream_id  String
+  user_id    String?
+  nickname   String?
+  content    String
+  type       String   @default("text")
+  is_pinned  Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  stream LiveStream @relation(fields: [stream_id], references: [id], onDelete: Cascade)
+
+  @@index([stream_id])
+  @@index([created_at])
+  @@map("live_messages")
+}
+
+model LiveRecording {
+  id            String   @id @default(uuid())
+  stream_id     String
+  video_url     String
+  thumbnail_url String?
+  duration      Int      @default(0)
+  file_size     Int?
+  is_public     Boolean  @default(false)
+  created_at    DateTime @default(now())
+
+  stream LiveStream @relation(fields: [stream_id], references: [id], onDelete: Cascade)
+
+  @@index([stream_id])
+  @@map("live_recordings")
+}
+
+// ============================================
+// STORIES
+// ============================================
+model Story {
+  id             String    @id @default(uuid())
+  user_id        String
+  announcement_id String?
+  type           String
+  media_url      String
+  thumbnail_url  String?
+  duration       Int       @default(5)
+  views_count    Int       @default(0)
+  likes_count    Int       @default(0)
+  replies_count  Int       @default(0)
+  is_active      Boolean   @default(true)
+  expires_at     DateTime
+  created_at     DateTime  @default(now())
+
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  announcement Announcement? @relation(fields: [announcement_id], references: [id], onDelete: SetNull)
+  views        StoryView[]
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@index([is_active])
+  @@map("stories")
+}
+
+model StoryView {
+  id         String   @id @default(uuid())
+  story_id   String
+  user_id    String?
+  session_id String?
+  viewed_at  DateTime @default(now())
+
+  story Story @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@index([story_id])
+  @@unique([story_id, user_id])
+  @@map("story_views")
+}
+
+// ============================================
+// FOLLOW
+// ============================================
+model Follow {
+  id           String   @id @default(uuid())
+  follower_id  String
+  following_id String
+  created_at   DateTime @default(now())
+
+  @@index([follower_id])
+  @@index([following_id])
+  @@unique([follower_id, following_id])
+  @@map("follows")
 }
 
 // ============================================

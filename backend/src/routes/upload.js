@@ -48,8 +48,7 @@ const upload = multer({
   }
 });
 
-// POST /api/upload - Upload singolo file
-router.post('/', authenticate, upload.single('file'), async (req, res) => {
+const handleSingleUpload = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Nessun file caricato' });
@@ -88,7 +87,13 @@ router.post('/', authenticate, upload.single('file'), async (req, res) => {
     console.error('Errore upload:', error);
     res.status(500).json({ success: false, error: 'Errore upload' });
   }
-});
+};
+
+// POST /api/upload - Upload singolo file
+router.post('/', authenticate, upload.single('file'), handleSingleUpload);
+
+// Compatibilità retroattiva per endpoint storico usato dal frontend
+router.post('/media', authenticate, upload.single('file'), handleSingleUpload);
 
 // POST /api/upload/multiple - Upload multiplo
 router.post('/multiple', authenticate, upload.array('files', 10), async (req, res) => {

@@ -24,7 +24,7 @@ router.get('/profile', authenticate, async (req, res) => {
         _count: {
           select: {
             announcements: true,
-            reviews_given: true,
+            reviews_written: true,
           }
         }
       }
@@ -124,7 +124,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       select: {
         id: true,
         nickname: true,
@@ -135,7 +135,7 @@ router.get('/:id', async (req, res) => {
         _count: {
           select: {
             announcements: { where: { status: 'active' } },
-            reviews_given: true,
+            reviews_written: true,
           }
         }
       }
@@ -153,4 +153,3 @@ router.get('/:id', async (req, res) => {
 });
 
 module.exports = router;
-

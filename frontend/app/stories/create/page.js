@@ -115,7 +115,7 @@ export default function CreateStoryPage() {
       formData.append('file', mediaFile)
       formData.append('type', 'story')
       
-      const uploadRes = await fetch(`${API_URL}/upload/media`, {
+      const uploadRes = await fetch(`${API_URL}/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -348,4 +348,3 @@ export default function CreateStoryPage() {
     </div>
   )
 }
-

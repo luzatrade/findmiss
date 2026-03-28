@@ -119,17 +119,7 @@ router.get('/:userId/followers', async (req, res) => {
     const followers = await prisma.follow.findMany({
       where: { following_id: userId },
       skip,
-      take: parseInt(limit),
-      include: {
-        follower: {
-          select: {
-            id: true,
-            nickname: true,
-            avatar_url: true,
-            is_verified: true
-          }
-        }
-      }
+      take: parseInt(limit)
     });
 
     // Nota: 'follower' non esiste come relazione, dobbiamo fare query separata
@@ -205,4 +195,3 @@ router.get('/:userId/check', authenticate, async (req, res) => {
 });
 
 module.exports = router;
-

@@ -48,7 +48,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
 
     const payment = await prisma.payment.findFirst({
-      where: { id: parseInt(id), user_id: req.user.id },
+      where: { id, user_id: req.user.id },
       include: {
         announcement: {
           select: { id: true, title: true, stage_name: true }

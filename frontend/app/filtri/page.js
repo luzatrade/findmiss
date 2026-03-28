@@ -1,8 +1,9 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, MapPin, CheckCircle, ArrowLeft, Search, Sparkles, Users, Video, X } from 'lucide-react';
-import { useErrorHandler, ErrorDisplay } from '../../components/ErrorHandler';
 import Link from 'next/link';
+import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api';
+import { FALLBACK_ANNOUNCEMENTS } from '../../lib/fallback-announcements';
 
 // Nuove categorie
 const CATEGORIES = [
@@ -25,14 +26,15 @@ export default function FiltriPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const { error, handleError, resetError } = useErrorHandler();
+  const [loadWarning, setLoadWarning] = useState(null);
 
   const fetchAnnouncements = async () => {
     try {
       setLoading(true);
-      resetError();
+      setLoadWarning(null);
       
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const apiUrl = getApiUrl();
+      const apiOrigin = getApiOrigin();
       const response = await fetch(`${apiUrl}/announcements`, {
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store'
@@ -44,7 +46,7 @@ export default function FiltriPage() {
       
       const result = await response.json();
       
-      if (result && result.success) {
+      if (result && result.success && Array.isArray(result.data)) {
         const transformed = result.data.map(a => ({
           id: a.id,
           title: a.title || a.stage_name || 'Senza titolo',
@@ -55,14 +57,16 @@ export default function FiltriPage() {
           verified: a.is_verified || false,
           vip: a.is_vip || false,
           category: a.category?.slug || 'miss',
-          image: a.media?.[0]?.url || 'https://via.placeholder.com/300x400?text=No+Image',
+          image: toAbsoluteMediaUrl(a.media?.[0]?.url || a.media?.[0]?.thumbnail_url, apiOrigin),
         }));
         setAnnouncements(transformed);
       } else {
         throw new Error('Formato dati non valido');
       }
     } catch (err) {
-      handleError(err);
+      console.error('Errore caricamento annunci:', err);
+      setLoadWarning('Backend non disponibile al momento: mostro annunci demo');
+      setAnnouncements(FALLBACK_ANNOUNCEMENTS);
     } finally {
       setLoading(false);
     }
@@ -108,13 +112,13 @@ export default function FiltriPage() {
         </div>
       </div>
 
-      <ErrorDisplay 
-        error={error} 
-        onRetry={fetchAnnouncements}
-        onDismiss={resetError}
-      />
-
       <div className="max-w-6xl mx-auto px-4 py-4 space-y-4">
+        {loadWarning && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            {loadWarning}
+          </p>
+        )}
+
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />

@@ -9,6 +9,8 @@ import UserMenu from '../components/UserMenu'
 import NotificationsBell from './components/NotificationsBell'
 import StoriesBar from './components/StoriesBar'
 import { LogoLight } from './components/Logo'
+import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../lib/runtime-api'
+import { FALLBACK_ANNOUNCEMENTS } from '../lib/fallback-announcements'
 
 // Nuove categorie
 const CATEGORIES = [
@@ -17,48 +19,6 @@ const CATEGORIES = [
   { id: 'mr', name: 'Mr.', icon: Users, color: 'from-blue-500 to-cyan-500' },
   { id: 'tmiss', name: 'T-Miss', icon: Sparkles, color: 'from-purple-500 to-violet-500' },
   { id: 'virtual', name: 'Servizi Virtuali', icon: Video, color: 'from-emerald-500 to-teal-500' },
-]
-
-const FALLBACK_ANNOUNCEMENTS = [
-  {
-    id: 'demo-1',
-    title: 'Sofia Milano Centro',
-    age: 25,
-    city: 'Milano',
-    price: 150,
-    verified: true,
-    vip: true,
-    availableNow: true,
-    image: 'https://picsum.photos/600/800?random=101',
-    category: 'miss',
-    services: null,
-  },
-  {
-    id: 'demo-2',
-    title: 'Valentina Roma EUR',
-    age: 27,
-    city: 'Roma',
-    price: 130,
-    verified: true,
-    vip: false,
-    availableNow: false,
-    image: 'https://picsum.photos/600/800?random=102',
-    category: 'miss',
-    services: null,
-  },
-  {
-    id: 'demo-3',
-    title: 'Alex Torino',
-    age: 29,
-    city: 'Torino',
-    price: 110,
-    verified: false,
-    vip: false,
-    availableNow: true,
-    image: 'https://picsum.photos/600/800?random=103',
-    category: 'mr',
-    services: null,
-  },
 ]
 
 export default function HomePage() {
@@ -92,14 +52,9 @@ export default function HomePage() {
       try {
         setIsLoading(true)
         setLoadError(null)
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-        const API_ORIGIN = API_URL.replace(/\/api\/?$/, '')
-        const toImageUrl = (value) => {
-          if (!value) return 'https://via.placeholder.com/300x400?text=No+Image'
-          if (value.startsWith('http://') || value.startsWith('https://')) return value
-          if (value.startsWith('/')) return `${API_ORIGIN}${value}`
-          return `${API_ORIGIN}/${value}`
-        }
+        const API_URL = getApiUrl()
+        const API_ORIGIN = getApiOrigin()
+        const toImageUrl = (value) => toAbsoluteMediaUrl(value, API_ORIGIN)
 
         const res = await fetch(`${API_URL}/announcements`)
         if (!res.ok) {
@@ -396,7 +351,7 @@ export default function HomePage() {
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 rounded-full border-2 border-pink-500 border-t-transparent animate-spin" />
           </div>
-        ) : loadError && filteredAnnouncements.length === 0 ? (
+        ) : loadError && announcements.length === 0 ? (
           <div className="text-center py-20 px-4">
             <div className="bg-red-50 border border-red-200 rounded-2xl p-6 max-w-md mx-auto">
               <p className="text-red-600 text-sm mb-2">{loadError}</p>

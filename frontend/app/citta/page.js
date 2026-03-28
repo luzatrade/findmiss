@@ -3,11 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share2, CheckCircle, MapPin } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
+import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api';
+import { FALLBACK_ANNOUNCEMENTS } from '../../lib/fallback-announcements';
 
 export default function ReelsPage() {
   const [reels, setReels] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadWarning, setLoadWarning] = useState(null);
 
   useEffect(() => {
     fetchReels();
@@ -15,13 +18,48 @@ export default function ReelsPage() {
 
   const fetchReels = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/announcements');
+      const apiUrl = getApiUrl();
+      const apiOrigin = getApiOrigin();
+      setLoadWarning(null);
+      const res = await fetch(`${apiUrl}/announcements`);
       const data = await res.json();
-      if (data.success) {
-        setReels(data.data);
+      if (res.ok && data.success && Array.isArray(data.data)) {
+        const transformed = data.data.map((item) => ({
+          id: item.id,
+          stage_name: item.stage_name || item.title || 'Profilo',
+          title: item.title || item.stage_name || 'Profilo',
+          description: item.description || '',
+          age: item.age || 0,
+          city: { name: item.city?.name || 'N/D' },
+          price_1hour: item.price_1hour ? Number(item.price_1hour) : 0,
+          is_verified: item.is_verified || false,
+          premium_level: item.is_vip ? 'vip' : 'standard',
+          is_available_now: item.is_available_now || false,
+          media: [{ url: toAbsoluteMediaUrl(item.media?.[0]?.url || item.media?.[0]?.thumbnail_url, apiOrigin) }],
+          likes_count: item.likes_count || 0,
+        }));
+        setReels(transformed);
+      } else {
+        throw new Error('Formato dati annunci non valido');
       }
     } catch (error) {
       console.error('Errore caricamento reels:', error);
+      setLoadWarning('Backend non disponibile al momento: mostro contenuti demo');
+      const fallbackReels = FALLBACK_ANNOUNCEMENTS.map((item) => ({
+        id: item.id,
+        stage_name: item.stage_name || item.title,
+        title: item.title,
+        description: item.description || '',
+        age: item.age,
+        city: { name: item.city },
+        price_1hour: item.price_1hour || item.price || 0,
+        is_verified: item.is_verified || item.verified || false,
+        premium_level: item.is_vip || item.vip ? 'vip' : 'standard',
+        is_available_now: item.is_available_now || item.availableNow || false,
+        media: [{ url: item.image }],
+        likes_count: item.likes_count || 0,
+      }));
+      setReels(fallbackReels);
     } finally {
       setLoading(false);
     }
@@ -67,6 +105,14 @@ export default function ReelsPage() {
 
   return (
     <div className="h-screen bg-black overflow-hidden relative">
+      {loadWarning && (
+        <div className="absolute top-4 left-4 right-4 z-20">
+          <p className="text-xs text-amber-200 bg-amber-900/70 border border-amber-700 rounded-lg px-3 py-2 backdrop-blur">
+            {loadWarning}
+          </p>
+        </div>
+      )}
+
       {/* Area cliccabile per navigare */}
       <div className="absolute inset-0 flex">
         <div className="w-1/2 h-full" onClick={prevReel}></div>

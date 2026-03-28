@@ -1,25 +1,4 @@
-function getApiUrl() {
-  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')
-  }
-
-  if (typeof window === 'undefined') {
-    return 'http://localhost:3001/api'
-  }
-
-  const hostname = window.location.hostname
-  const protocol = window.location.protocol
-
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:3001/api'
-  }
-
-  if (hostname === 'findmiss.it' || hostname === 'www.findmiss.it') {
-    return `${protocol}//api.findmiss.it/api`
-  }
-
-  return `http://${hostname}:3001/api`
-}
+import { getApiUrl } from './runtime-api'
 
 export const API_URL = getApiUrl()
 

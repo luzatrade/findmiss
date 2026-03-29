@@ -1,6 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { optionalAuth } = require('../middleware/auth');
+const { getFallbackReels } = require('../data/fallbackData');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -145,7 +146,24 @@ router.get('/', optionalAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Errore fetch reels:', error);
-    res.status(500).json({ success: false, error: 'Errore server' });
+    const fallback = getFallbackReels({
+      page: req.query.page,
+      limit: req.query.limit,
+      city: req.query.city,
+      category: req.query.category
+    });
+
+    return res.json({
+      success: true,
+      data: fallback.data,
+      pagination: {
+        page: fallback.page,
+        limit: fallback.limit,
+        total: fallback.total,
+        pages: Math.ceil(fallback.total / fallback.limit)
+      },
+      fallback: true
+    });
   }
 });
 

@@ -2,6 +2,10 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { optionalAuth, authenticate } = require('../middleware/auth');
 const createRouter = require('./announcements-create');
+const {
+  getFallbackAnnouncements,
+  getFallbackAnnouncementById
+} = require('../data/fallbackData');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -252,7 +256,30 @@ router.get('/', optionalAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Errore fetch annunci:', error);
-    res.status(500).json({ success: false, error: 'Errore server' });
+    const {
+      page = 1,
+      limit = 20,
+      city,
+      category
+    } = req.query;
+
+    const parsedPage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const parsedLimit = Math.max(1, Number.parseInt(limit, 10) || 20);
+    const fallbackList = getFallbackAnnouncements({ city, category });
+    const start = (parsedPage - 1) * parsedLimit;
+    const paginated = fallbackList.slice(start, start + parsedLimit);
+
+    return res.json({
+      success: true,
+      data: paginated,
+      pagination: {
+        page: parsedPage,
+        limit: parsedLimit,
+        total: fallbackList.length,
+        pages: Math.ceil(fallbackList.length / parsedLimit)
+      },
+      fallback: true
+    });
   }
 });
 
@@ -387,6 +414,24 @@ router.get('/:id', optionalAuth, async (req, res) => {
     });
 
     if (!announcement) {
+      const fallback = getFallbackAnnouncementById(id);
+      if (fallback) {
+        const fallbackRating =
+          fallback.reviews && fallback.reviews.length > 0
+            ? fallback.reviews.reduce((acc, review) => acc + review.rating, 0) / fallback.reviews.length
+            : 0;
+
+        return res.json({
+          success: true,
+          data: {
+            ...fallback,
+            avgRating: Math.round(fallbackRating * 10) / 10,
+            userLiked: false
+          },
+          fallback: true
+        });
+      }
+
       return res.status(404).json({ success: false, error: 'Annuncio non trovato' });
     }
 
@@ -432,7 +477,25 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Errore fetch annuncio:', error);
-    res.status(500).json({ success: false, error: 'Errore server' });
+    const fallback = getFallbackAnnouncementById(req.params.id);
+    if (fallback) {
+      const fallbackRating =
+        fallback.reviews && fallback.reviews.length > 0
+          ? fallback.reviews.reduce((acc, review) => acc + review.rating, 0) / fallback.reviews.length
+          : 0;
+
+      return res.json({
+        success: true,
+        data: {
+          ...fallback,
+          avgRating: Math.round(fallbackRating * 10) / 10,
+          userLiked: false
+        },
+        fallback: true
+      });
+    }
+
+    return res.status(500).json({ success: false, error: 'Errore server' });
   }
 });
 

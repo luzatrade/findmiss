@@ -1,5 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
+const { getFallbackCategories } = require('../data/fallbackData');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -12,7 +13,7 @@ router.get('/', async (req, res) => {
     });
     res.json({ success: true, data: categories });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Errore server' });
+    res.json({ success: true, data: getFallbackCategories(), fallback: true });
   }
 });
 

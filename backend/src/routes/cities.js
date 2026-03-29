@@ -1,5 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
+const { getFallbackCities, getFallbackCityBySlug } = require('../data/fallbackData');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -21,7 +22,8 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, data: cities });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Errore server' });
+    const cities = getFallbackCities({ search: req.query.search, limit: req.query.limit });
+    res.json({ success: true, data: cities, fallback: true });
   }
 });
 
@@ -40,7 +42,12 @@ router.get('/:slug', async (req, res) => {
 
     res.json({ success: true, data: { ...city, announcements_count: announcementsCount } });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Errore server' });
+    const city = getFallbackCityBySlug(req.params.slug);
+    if (!city) {
+      return res.status(404).json({ success: false, error: 'Città non trovata' });
+    }
+
+    return res.json({ success: true, data: city, fallback: true });
   }
 });
 

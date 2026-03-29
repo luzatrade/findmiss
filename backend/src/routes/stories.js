@@ -1,6 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate, optionalAuth } = require('../middleware/auth');
+const { getFallbackStories } = require('../data/fallbackData');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -55,7 +56,7 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Errore fetch storie:', error);
-    res.status(500).json({ success: false, error: 'Errore server' });
+    return res.json({ success: true, data: getFallbackStories(), fallback: true });
   }
 });
 
@@ -87,7 +88,10 @@ router.get('/user/:userId', async (req, res) => {
     res.json({ success: true, data: stories });
   } catch (error) {
     console.error('Errore storie utente:', error);
-    res.status(500).json({ success: false, error: 'Errore server' });
+    const userStories = getFallbackStories()
+      .filter((group) => group.user?.id === req.params.userId)
+      .flatMap((group) => group.stories || []);
+    return res.json({ success: true, data: userStories, fallback: true });
   }
 });
 
@@ -190,4 +194,3 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 module.exports = router;
-

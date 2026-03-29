@@ -8,7 +8,9 @@ import {
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 export default function ReelsPage() {
   const router = useRouter()

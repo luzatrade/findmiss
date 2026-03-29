@@ -4,7 +4,9 @@ import { ArrowLeft, Heart, MessageCircle, MoreHorizontal, MapPin, Calendar, Cloc
 import { useRouter } from 'next/navigation'
 import Map from '../../../components/Map'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 const ProfilePage = ({ params }) => {
   const resolvedParams = use(params)

@@ -1,6 +1,7 @@
 'use client'
 import { createContext, useContext, useEffect, useState } from 'react'
 import { io } from 'socket.io-client'
+import { getApiOrigin, getWsUrl } from '../../lib/runtime-api'
 
 const SocketContext = createContext(null)
 
@@ -19,9 +20,8 @@ export function SocketProvider({ children, token }) {
       return
     }
 
-    // Usa l'URL API ma rimuovi l'/api finale per evitare namespace invalidi
-    const baseApi = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/api\/?$/, '')
-    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || baseApi
+    const WS_URL = getWsUrl()
+    const baseApi = getApiOrigin()
 
     const newSocket = io(WS_URL, {
       path: '/socket.io',
@@ -68,4 +68,3 @@ export function useSocket() {
   }
   return context
 }
-

@@ -7,7 +7,9 @@ import {
   Shield, UserCheck, UserX, Loader2, RefreshCw, Mail, Calendar
 } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 export default function AdminUsersPage() {
   const router = useRouter()

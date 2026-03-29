@@ -7,7 +7,9 @@ import {
   TrendingUp, Eye, Shield, Loader2, Sparkles, Rocket
 } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 // Piani disponibili
 const PLANS = [

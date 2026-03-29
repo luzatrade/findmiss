@@ -10,7 +10,11 @@ import {
   Radio, Film, Image, DollarSign
 } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl, getApiOrigin, getWsUrl } from '../../lib/runtime-api'
+
+const API_URL = getApiUrl()
+const API_ORIGIN = getApiOrigin()
+const WS_URL = getWsUrl()
 
 export default function AdminPage() {
   const router = useRouter()
@@ -283,10 +287,10 @@ export default function AdminPage() {
               <div className="bg-white rounded-xl p-5 border border-gray-200">
                 <h3 className="font-semibold text-gray-900 mb-3">🔗 Quick Links</h3>
                 <div className="flex flex-wrap gap-2">
-                  <a href="http://localhost:3001" target="_blank" className="text-sm text-pink-500 hover:underline">API Base</a>
-                  <a href="http://localhost:3001/api/announcements" target="_blank" className="text-sm text-pink-500 hover:underline">Annunci JSON</a>
-                  <a href="http://localhost:3001/api/categories" target="_blank" className="text-sm text-pink-500 hover:underline">Categorie</a>
-                  <a href="http://localhost:3001/api/cities" target="_blank" className="text-sm text-pink-500 hover:underline">Città</a>
+                  <a href={API_ORIGIN} target="_blank" className="text-sm text-pink-500 hover:underline">API Base</a>
+                  <a href={`${API_URL}/announcements`} target="_blank" className="text-sm text-pink-500 hover:underline">Annunci JSON</a>
+                  <a href={`${API_URL}/categories`} target="_blank" className="text-sm text-pink-500 hover:underline">Categorie</a>
+                  <a href={`${API_URL}/cities`} target="_blank" className="text-sm text-pink-500 hover:underline">Città</a>
                 </div>
               </div>
             </div>
@@ -449,7 +453,7 @@ export default function AdminPage() {
                     <code className="text-sm text-gray-700 flex-1">{endpoint.path}</code>
                     <span className="text-xs text-gray-500">{endpoint.desc}</span>
                     <a
-                      href={`http://localhost:3001${endpoint.path}`}
+                      href={`${API_ORIGIN}${endpoint.path}`}
                       target="_blank"
                       className="text-pink-500 hover:text-pink-600"
                     >
@@ -465,7 +469,7 @@ export default function AdminPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  <span className="text-gray-600">Socket.IO attivo su ws://localhost:3001</span>
+                  <span className="text-gray-600">Socket.IO attivo su {WS_URL}</span>
                 </div>
                 <p className="text-gray-500">Eventi: chat, live streaming, notifiche real-time</p>
               </div>
@@ -485,4 +489,3 @@ export default function AdminPage() {
     </div>
   )
 }
-

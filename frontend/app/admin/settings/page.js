@@ -7,7 +7,9 @@ import {
   Database, Server, Mail, Key, Loader2, CheckCircle
 } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 export default function AdminSettingsPage() {
   const router = useRouter()

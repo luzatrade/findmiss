@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 // Hook personalizzato per socket con fallback
 function useSocketSafe() {

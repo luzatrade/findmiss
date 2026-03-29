@@ -3,22 +3,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { X, ChevronLeft, ChevronRight, Heart, MessageCircle, Send, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl, toAbsoluteMediaUrl } from '../../lib/runtime-api'
 
-const getApiOrigin = () => {
-  try {
-    return new URL(API_URL).origin
-  } catch {
-    return 'http://localhost:3001'
-  }
-}
-
-const toAbsoluteMediaUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http://') || url.startsWith('https://')) return url
-  if (url.startsWith('/')) return `${getApiOrigin()}${url}`
-  return `${getApiOrigin()}/${url}`
-}
+const API_URL = getApiUrl()
 
 const DEMO_STORIES = [
   {

@@ -24,6 +24,16 @@ export function getApiOrigin() {
   return getApiUrl().replace(/\/api\/?$/, '')
 }
 
+export function getWsUrl() {
+  const envWsUrl = typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_WS_URL : null
+  if (envWsUrl && typeof envWsUrl === 'string') {
+    const normalized = envWsUrl.trim().replace(/\/$/, '')
+    if (normalized.length > 0) return normalized
+  }
+
+  return getApiOrigin()
+}
+
 export function toAbsoluteMediaUrl(value, apiOrigin = getApiOrigin(), fallback = 'https://via.placeholder.com/300x400?text=No+Image') {
   if (!value || typeof value !== 'string') return fallback
   if (value.startsWith('http://') || value.startsWith('https://')) return value

@@ -8,7 +8,9 @@ import {
   TrendingUp, Calendar, Settings, Pause, Play, Loader2
 } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 export default function MyAnnouncementsPage() {
   const router = useRouter()

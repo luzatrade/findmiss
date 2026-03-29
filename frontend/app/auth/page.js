@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Lock, Phone, User, Eye, EyeOff, Loader2, AlertCircle, Check } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 export default function AuthPage() {
   const router = useRouter()

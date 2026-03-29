@@ -2,7 +2,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Heart, MessageCircle, Share2, ChevronUp, ChevronDown, X, Phone } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 export default function ReelPlayer({ reel, onNext, onPrev, onClose, isActive }) {
   const [liked, setLiked] = useState(false)

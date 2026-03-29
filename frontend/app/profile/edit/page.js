@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Camera, Loader2, Save, AlertCircle, User, Mail, Phone, Lock } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 export default function EditProfilePage() {
   const router = useRouter()

@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Camera, Image, X, Loader2, Upload, Type, Palette } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { getApiUrl } from '../../../lib/runtime-api'
+
+const API_URL = getApiUrl()
 
 export default function CreateStoryPage() {
   const router = useRouter()

@@ -256,6 +256,7 @@ router.get('/', optionalAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Errore fetch annunci:', error);
+    const debugMode = req.query.debug === '1';
     const {
       page = 1,
       limit = 20,
@@ -278,7 +279,15 @@ router.get('/', optionalAuth, async (req, res) => {
         total: fallbackList.length,
         pages: Math.ceil(fallbackList.length / parsedLimit)
       },
-      fallback: true
+      fallback: true,
+      ...(debugMode
+        ? {
+            fallback_error: {
+              code: error.code || null,
+              message: String(error.message || error).slice(0, 300)
+            }
+          }
+        : {})
     });
   }
 });
@@ -477,6 +486,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Errore fetch annuncio:', error);
+    const debugMode = req.query.debug === '1';
     const fallback = getFallbackAnnouncementById(req.params.id);
     if (fallback) {
       const fallbackRating =
@@ -491,7 +501,15 @@ router.get('/:id', optionalAuth, async (req, res) => {
           avgRating: Math.round(fallbackRating * 10) / 10,
           userLiked: false
         },
-        fallback: true
+        fallback: true,
+        ...(debugMode
+          ? {
+              fallback_error: {
+                code: error.code || null,
+                message: String(error.message || error).slice(0, 300)
+              }
+            }
+          : {})
       });
     }
 

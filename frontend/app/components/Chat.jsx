@@ -3,6 +3,36 @@ import { X, Shield } from 'react-feather'
 import ProtectedMediaViewer from '../ProtectedMediaViewer'
 import { getConversationMessages, sendMessage as apiSendMessage } from '../../lib/api' // es. import delle funzioni API
 
+function MessageInput({ onSend }) {
+  const [value, setValue] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    const text = value.trim()
+    if (!text) return
+    await onSend(text)
+    setValue('')
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-center gap-2">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Scrivi un messaggio..."
+        className="flex-1 rounded-xl border border-gray-700 bg-gray-900 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40"
+      />
+      <button
+        type="submit"
+        className="px-4 py-2 rounded-xl bg-pink-600 text-white text-sm font-medium hover:bg-pink-500 transition"
+      >
+        Invia
+      </button>
+    </form>
+  )
+}
+
 export default function Chat({ conversationId, onClose }) {
   const [loading, setLoading] = useState(true)
   const [messages, setMessages] = useState([])

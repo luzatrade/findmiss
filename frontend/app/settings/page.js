@@ -289,7 +289,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between py-3">
               <div>
                 <p className="font-medium text-gray-900">Lingua</p>
-                <p className="text-sm text-gray-500">Scegli la lingua dell'app</p>
+                <p className="text-sm text-gray-500">Scegli la lingua dell&apos;app</p>
               </div>
               <select
                 value={settings.display.language}
@@ -317,7 +317,7 @@ export default function SettingsPage() {
               className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition"
             >
               <LogOut size={18} />
-              Esci dall'account
+              Esci dall&apos;account
             </button>
             
             <button
@@ -382,4 +382,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-

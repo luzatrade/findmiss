@@ -355,7 +355,7 @@ export default function HomePage() {
           <div className="text-center py-20 px-4">
             <div className="bg-red-50 border border-red-200 rounded-2xl p-6 max-w-md mx-auto">
               <p className="text-red-600 text-sm mb-2">{loadError}</p>
-              <p className="text-gray-500 text-xs">Controlla la configurazione dell'API di produzione.</p>
+              <p className="text-gray-500 text-xs">Controlla la configurazione dell&apos;API di produzione.</p>
             </div>
           </div>
         ) : filteredAnnouncements.length === 0 ? (

@@ -107,7 +107,7 @@ export default function MenuPage() {
                 <User size={32} className="text-gray-400" />
               </div>
               <div className="flex-1">
-                <p className="text-gray-500 mb-2">Non hai effettuato l'accesso</p>
+                <p className="text-gray-500 mb-2">Non hai effettuato l&apos;accesso</p>
                 <Link 
                   href="/auth"
                   className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-5 py-2.5 rounded-full font-semibold text-sm shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 transition"
@@ -197,7 +197,7 @@ export default function MenuPage() {
             className="w-full flex items-center justify-center gap-2 p-4 text-red-500 bg-red-50 rounded-2xl hover:bg-red-100 transition font-medium"
           >
             <LogOut size={20} />
-            <span>Esci dall'account</span>
+            <span>Esci dall&apos;account</span>
           </button>
         )}
 

@@ -234,7 +234,7 @@ export default function AnnouncementDetail({ params }) {
             </div>
             <div className="text-right">
               <div className="text-3xl font-bold text-pink-500">€{announcement.price}</div>
-              <div className="text-sm text-gray-500">all'ora</div>
+              <div className="text-sm text-gray-500">all&apos;ora</div>
             </div>
           </div>
           

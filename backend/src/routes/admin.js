@@ -2,13 +2,29 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const ADMIN_SETUP_SECRET = process.env.ADMIN_SETUP_SECRET || '';
 
-// Middleware admin (per ora permetti a tutti per testing)
+function safeSecretEqual(input, expected) {
+  if (!input || !expected) return false;
+  const a = Buffer.from(String(input));
+  const b = Buffer.from(String(expected));
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
 const requireAdmin = async (req, res, next) => {
-  // In produzione: if (!req.user || req.user.role !== 'admin')
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Non autenticato' });
+  }
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Accesso riservato agli admin' });
+  }
+
   next();
 };
 
@@ -19,6 +35,21 @@ const requireAdmin = async (req, res, next) => {
 // POST /api/admin/create-admin - Crea account admin (TEMPORANEO - rimuovere dopo uso)
 router.post('/create-admin', async (req, res) => {
   try {
+    if (!ADMIN_SETUP_SECRET) {
+      return res.status(503).json({
+        success: false,
+        error: 'Bootstrap admin non configurato'
+      });
+    }
+
+    const providedSecret = req.headers['x-admin-setup-secret'] || req.body?.setup_secret;
+    if (!safeSecretEqual(providedSecret, ADMIN_SETUP_SECRET)) {
+      return res.status(401).json({
+        success: false,
+        error: 'Secret bootstrap non valido'
+      });
+    }
+
     const { email, password, nickname } = req.body;
     
     if (!email || !password) {
@@ -310,18 +341,25 @@ router.delete('/discount-codes/:id', authenticate, requireAdmin, async (req, res
 router.post('/discount-codes/validate', async (req, res) => {
   try {
     const { code, type } = req.body; // type: premium, boost
+    const normalizedType = type || 'all';
     
     const discountCode = await prisma.discountCode.findFirst({
       where: {
         code: code.toUpperCase(),
         is_active: true,
-        OR: [
-          { expires_at: null },
-          { expires_at: { gt: new Date() } }
-        ],
-        OR: [
-          { applies_to: 'all' },
-          { applies_to: type }
+        AND: [
+          {
+            OR: [
+              { expires_at: null },
+              { expires_at: { gt: new Date() } }
+            ]
+          },
+          {
+            OR: [
+              { applies_to: 'all' },
+              { applies_to: normalizedType }
+            ]
+          }
         ]
       }
     });

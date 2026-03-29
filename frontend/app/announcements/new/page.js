@@ -430,7 +430,7 @@ export default function NewAnnouncementPage() {
             <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-5">
               {/* Nome d'arte */}
               <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Nome d'arte *</label>
+                <label className="text-sm font-medium text-gray-700">Nome d&apos;arte *</label>
                 <input
                   type="text"
                   value={formData.stage_name}

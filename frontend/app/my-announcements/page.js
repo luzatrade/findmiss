@@ -421,7 +421,7 @@ export default function MyAnnouncementsPage() {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">Elimina annuncio?</h3>
               <p className="text-gray-500 mb-6">
-                Questa azione è irreversibile. L'annuncio e tutte le sue statistiche verranno eliminati.
+                Questa azione è irreversibile. L&apos;annuncio e tutte le sue statistiche verranno eliminati.
               </p>
               <div className="flex gap-3">
                 <button
@@ -456,4 +456,3 @@ export default function MyAnnouncementsPage() {
     </div>
   )
 }
-

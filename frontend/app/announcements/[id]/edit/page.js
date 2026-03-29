@@ -310,7 +310,7 @@ export default function EditAnnouncementPage({ params }) {
             )}
           </div>
           <p className="text-xs text-gray-500">
-            {existingMedia.length + newPhotos.length}/10 foto • La prima sarà l'immagine principale
+            {existingMedia.length + newPhotos.length}/10 foto • La prima sarà l&apos;immagine principale
           </p>
         </section>
 
@@ -320,7 +320,7 @@ export default function EditAnnouncementPage({ params }) {
           
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="text-sm font-medium text-gray-700 block mb-1">Nome d'arte</label>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Nome d&apos;arte</label>
               <input
                 type="text"
                 value={formData.stage_name}
@@ -539,4 +539,3 @@ export default function EditAnnouncementPage({ params }) {
     </div>
   )
 }
-

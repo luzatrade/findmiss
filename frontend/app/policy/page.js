@@ -95,7 +95,7 @@ export default function PolicyPage() {
             <p>
               <strong className="text-gray-900">5. Pagamenti</strong><br />
               I pagamenti per servizi premium sono gestiti attraverso gateway sicuri. 
-              Le tariffe sono indicate chiaramente prima dell'acquisto.
+              Le tariffe sono indicate chiaramente prima dell&apos;acquisto.
             </p>
             
             <p>

@@ -179,7 +179,7 @@ export default function AdminSettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-gray-900">Modalità Manutenzione</p>
-                  <p className="text-sm text-gray-500">Blocca l'accesso al sito per tutti tranne admin</p>
+                  <p className="text-sm text-gray-500">Blocca l&apos;accesso al sito per tutti tranne admin</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -220,4 +220,3 @@ export default function AdminSettingsPage() {
     </div>
   )
 }
-

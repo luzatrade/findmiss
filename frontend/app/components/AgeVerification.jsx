@@ -158,7 +158,7 @@ export default function AgeVerification() {
               Questo sito contiene materiale destinato esclusivamente a un pubblico adulto, incluse immagini, video, contenuti testuali e servizi di natura erotica con espliciti riferimenti sessuali.
             </p>
             <p className="mt-3 font-semibold text-red-600 text-sm sm:text-base">
-              L'accesso e la navigazione sono severamente vietati ai minori di 18 anni.
+              L&apos;accesso e la navigazione sono severamente vietati ai minori di 18 anni.
             </p>
           </div>
 
@@ -191,7 +191,7 @@ export default function AgeVerification() {
           {/* Info Section */}
           <h2 className="text-base sm:text-lg font-bold text-gray-900 mt-6 mb-3 pb-2 border-b-2 border-[#E91E8C] flex items-center gap-2">
             <span className="text-[#E91E8C]">▸</span>
-            Informativa dell'Amministrazione
+            Informativa dell&apos;Amministrazione
           </h2>
 
           <div className="bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-200 space-y-4 text-sm sm:text-base text-slate-600">
@@ -202,13 +202,13 @@ export default function AgeVerification() {
               <strong className="text-slate-800">Provenienza dei contenuti:</strong> Tutto il materiale pubblicato (foto, video, testi) è fornito direttamente dagli inserzionisti, i quali dichiarano di essere titolari dei relativi diritti o di avere ottenuto le necessarie autorizzazioni. Gli inserzionisti si assumono la piena responsabilità civile e penale per i contenuti caricati.
             </p>
             <p>
-              <strong className="text-slate-800">Controllo e moderazione:</strong> L'Amministrazione effettua controlli regolari sui contenuti pubblicati e rimuove tempestivamente materiale non conforme alle leggi italiane. Tuttavia, non è possibile garantire un controllo preventivo su ogni singolo contenuto caricato dagli utenti.
+              <strong className="text-slate-800">Controllo e moderazione:</strong> L&apos;Amministrazione effettua controlli regolari sui contenuti pubblicati e rimuove tempestivamente materiale non conforme alle leggi italiane. Tuttavia, non è possibile garantire un controllo preventivo su ogni singolo contenuto caricato dagli utenti.
             </p>
             <p>
               <strong className="text-slate-800">Segnalazioni:</strong> Se riscontri contenuti che violano la dignità personale o professionale, sono utilizzati senza consenso, violano diritti di immagine, possono configurare reati (in particolare contenuti pedopornografici), o sono contrari alla normativa vigente, invia immediatamente una segnalazione a: <a href="mailto:abuse@findmiss.com" className="text-[#E91E8C] font-semibold hover:underline">abuse@findmiss.com</a>
             </p>
             <p>
-              L'Amministrazione provvederà alla rimozione immediata del materiale segnalato e, ove necessario, alla denuncia alle Autorità competenti.
+              L&apos;Amministrazione provvederà alla rimozione immediata del materiale segnalato e, ove necessario, alla denuncia alle Autorità competenti.
             </p>
 
             {/* Warning Box */}
@@ -272,4 +272,3 @@ export default function AgeVerification() {
     </div>
   )
 }
-

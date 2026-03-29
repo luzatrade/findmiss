@@ -13,26 +13,54 @@ const PORT = process.env.PORT || 3001;
 // Funzione per inizializzare database (migrazioni e seed)
 async function initializeDatabase() {
   if (process.env.NODE_ENV === 'production') {
+    const projectRoot = path.join(__dirname, '..');
+    let schemaReady = false;
+
     try {
       console.log('🔄 Controllo migrazioni database...');
       execSync('npx prisma migrate deploy', { 
         stdio: 'inherit',
-        cwd: path.join(__dirname, '..')
+        cwd: projectRoot
       });
       console.log('✅ Migrazioni verificate!');
-      
-      // Esegui seed solo se il database è vuoto
+    } catch (error) {
+      console.error('⚠️ Errore migrazioni (continua comunque):', error.message);
+    }
+
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    try {
+      await prisma.announcement.count();
+      schemaReady = true;
+      console.log('✅ Schema database pronto');
+    } catch (schemaError) {
+      console.warn('⚠️ Schema non pronto dopo migrate deploy:', schemaError.message);
+
       try {
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
+        console.log('🛠️ Tentativo automatico con prisma db push...');
+        execSync('npx prisma db push --skip-generate', {
+          stdio: 'inherit',
+          cwd: projectRoot
+        });
+
+        await prisma.announcement.count();
+        schemaReady = true;
+        console.log('✅ Schema creato con db push');
+      } catch (pushError) {
+        console.error('⚠️ db push non riuscito (continua in modalità fallback):', pushError.message);
+      }
+    }
+
+    if (schemaReady) {
+      try {
         const announcementCount = await prisma.announcement.count();
-        await prisma.$disconnect();
-        
+
         if (announcementCount === 0) {
           console.log('🌱 Database vuoto, eseguo seed...');
-          execSync('node prisma/seed.js', { 
+          execSync('node prisma/seed.js', {
             stdio: 'inherit',
-            cwd: path.join(__dirname, '..')
+            cwd: projectRoot
           });
           console.log('✅ Database popolato!');
         } else {
@@ -41,9 +69,9 @@ async function initializeDatabase() {
       } catch (seedError) {
         console.log('⚠️ Seed non eseguito (continua comunque):', seedError.message);
       }
-    } catch (error) {
-      console.error('⚠️ Errore migrazioni (continua comunque):', error.message);
     }
+
+    await prisma.$disconnect().catch(() => {});
   }
 }
 

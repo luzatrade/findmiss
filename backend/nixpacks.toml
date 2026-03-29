@@ -8,5 +8,4 @@ nixPkgs = ["nodejs_20"]
 cmds = ["npm install", "npx prisma generate"]
 
 [start]
-cmd = "npm run migrate:deploy && node src/server.js"
-
+cmd = "node src/server.js"

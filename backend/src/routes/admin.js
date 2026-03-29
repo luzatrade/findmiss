@@ -138,15 +138,31 @@ router.get('/plans', authenticate, requireAdmin, async (req, res) => {
 // POST /api/admin/plans - Crea piano
 router.post('/plans', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { name, slug, price, duration_days, features, is_active } = req.body;
+    const {
+      name,
+      plan_type,
+      duration,
+      duration_days,
+      price,
+      currency,
+      daily_exits,
+      features,
+      is_active
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, error: 'Nome piano richiesto' });
+    }
     
     const plan = await prisma.premiumPlan.create({
       data: {
         name,
-        slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
+        plan_type: plan_type || 'monthly',
+        duration: Number.parseInt(duration ?? duration_days, 10) || 30,
         price: parseFloat(price) || 0,
-        duration_days: parseInt(duration_days) || 30,
-        features: features || [],
+        currency: currency || 'EUR',
+        daily_exits: Number.parseInt(daily_exits, 10) || 0,
+        features: typeof features === 'string' ? features : JSON.stringify(features || []),
         is_active: is_active !== false
       }
     });
@@ -162,15 +178,32 @@ router.post('/plans', authenticate, requireAdmin, async (req, res) => {
 router.put('/plans/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price, duration_days, features, is_active } = req.body;
+    const {
+      name,
+      plan_type,
+      duration,
+      duration_days,
+      price,
+      currency,
+      daily_exits,
+      features,
+      is_active
+    } = req.body;
     
     const plan = await prisma.premiumPlan.update({
       where: { id },
       data: {
         ...(name && { name }),
+        ...(plan_type && { plan_type }),
+        ...((duration !== undefined || duration_days !== undefined) && {
+          duration: Number.parseInt(duration ?? duration_days, 10) || 30
+        }),
         ...(price !== undefined && { price: parseFloat(price) }),
-        ...(duration_days && { duration_days: parseInt(duration_days) }),
-        ...(features && { features }),
+        ...(currency !== undefined && { currency }),
+        ...(daily_exits !== undefined && { daily_exits: Number.parseInt(daily_exits, 10) || 0 }),
+        ...(features !== undefined && {
+          features: typeof features === 'string' ? features : JSON.stringify(features || [])
+        }),
         ...(is_active !== undefined && { is_active })
       }
     });

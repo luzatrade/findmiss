@@ -10,34 +10,6 @@ const {
 const router = express.Router();
 const prisma = new PrismaClient();
 
-function getDebugDatabaseMeta() {
-  const candidateKeys = [
-    'DATABASE_PUBLIC_URL',
-    'POSTGRES_URL',
-    'POSTGRES_PRISMA_URL',
-    'PG_DATABASE_URL',
-    'RAILWAY_DATABASE_URL'
-  ];
-
-  let configuredHost = null;
-  try {
-    if (process.env.DATABASE_URL) {
-      configuredHost = new URL(process.env.DATABASE_URL).host;
-    }
-  } catch (_) {
-    configuredHost = null;
-  }
-
-  return {
-    database_url_source: process.env.DATABASE_URL_SOURCE || 'DATABASE_URL',
-    configured_host: configuredHost,
-    candidate_vars: candidateKeys.reduce((acc, key) => {
-      acc[key] = Boolean(process.env[key]);
-      return acc;
-    }, {})
-  };
-}
-
 // GET /api/announcements - Feed homepage con filtri avanzati
 router.get('/', optionalAuth, async (req, res) => {
   try {
@@ -284,7 +256,6 @@ router.get('/', optionalAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Errore fetch annunci:', error);
-    const debugMode = req.query.debug === '1';
     const {
       page = 1,
       limit = 20,
@@ -307,16 +278,7 @@ router.get('/', optionalAuth, async (req, res) => {
         total: fallbackList.length,
         pages: Math.ceil(fallbackList.length / parsedLimit)
       },
-      fallback: true,
-      ...(debugMode
-        ? {
-            fallback_error: {
-              code: error.code || null,
-              message: String(error.message || error).slice(0, 300),
-              ...getDebugDatabaseMeta()
-            }
-          }
-        : {})
+      fallback: true
     });
   }
 });
@@ -515,7 +477,6 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Errore fetch annuncio:', error);
-    const debugMode = req.query.debug === '1';
     const fallback = getFallbackAnnouncementById(req.params.id);
     if (fallback) {
       const fallbackRating =
@@ -530,16 +491,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
           avgRating: Math.round(fallbackRating * 10) / 10,
           userLiked: false
         },
-        fallback: true,
-        ...(debugMode
-          ? {
-              fallback_error: {
-                code: error.code || null,
-                message: String(error.message || error).slice(0, 300),
-                ...getDebugDatabaseMeta()
-              }
-            }
-          : {})
+        fallback: true
       });
     }
 

@@ -5,6 +5,9 @@ const http = require('http');
 const path = require('path');
 const { execSync } = require('child_process');
 require('dotenv').config();
+const { resolveDatabaseUrl } = require('./config/resolveDatabaseUrl');
+
+resolveDatabaseUrl();
 
 const app = express();
 const server = http.createServer(app);

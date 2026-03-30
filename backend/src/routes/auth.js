@@ -13,13 +13,16 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secre
 // Registrazione (anonima, solo email e password)
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, nickname } = req.body;
+    const { email, password, nickname, role } = req.body;
     
     // Sanitize input
+    const normalizedRole = ['user', 'advertiser'].includes(role) ? role : 'user';
+
     const sanitizedData = {
       email: sanitizeInput(email),
       password: password, // Don't sanitize password
-      nickname: nickname ? sanitizeInput(nickname) : null
+      nickname: nickname ? sanitizeInput(nickname) : null,
+      role: normalizedRole
     };
 
     // Validate input
@@ -46,13 +49,15 @@ router.post('/register', async (req, res) => {
       data: {
         email: sanitizedData.email,
         password_hash,
-        role: 'user',
+        nickname: sanitizedData.nickname,
+        role: sanitizedData.role,
         is_active: true,
         is_verified: false
       },
       select: {
         id: true,
         email: true,
+        nickname: true,
         role: true,
         created_at: true
       }
@@ -191,7 +196,6 @@ router.post('/logout', async (req, res) => {
 });
 
 module.exports = router;
-
 
 
 

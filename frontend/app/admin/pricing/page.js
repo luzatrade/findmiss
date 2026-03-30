@@ -52,8 +52,27 @@ export default function PricingAdminPage() {
   const [editingBoost, setEditingBoost] = useState(null)
 
   useEffect(() => {
+    const token = localStorage.getItem('token')
+    const storedUser = localStorage.getItem('user')
+
+    if (!token || !storedUser) {
+      router.push('/auth?redirect=/admin/pricing')
+      return
+    }
+
+    try {
+      const user = JSON.parse(storedUser)
+      if (user.role !== 'admin') {
+        router.push('/')
+        return
+      }
+    } catch {
+      router.push('/auth?redirect=/admin/pricing')
+      return
+    }
+
     loadData()
-  }, [])
+  }, [router])
 
   const loadData = async () => {
     setLoading(true)
@@ -562,4 +581,3 @@ export default function PricingAdminPage() {
     </div>
   )
 }
-

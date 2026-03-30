@@ -20,12 +20,26 @@ export default function AdminReportsPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    if (!token) {
+    const storedUser = localStorage.getItem('user')
+
+    if (!token || !storedUser) {
       router.push('/auth?redirect=/admin/reports')
       return
     }
+
+    try {
+      const user = JSON.parse(storedUser)
+      if (user.role !== 'admin') {
+        router.push('/')
+        return
+      }
+    } catch {
+      router.push('/auth?redirect=/admin/reports')
+      return
+    }
+
     loadStats()
-  }, [dateRange])
+  }, [dateRange, router])
 
   const loadStats = async () => {
     setLoading(true)
@@ -251,4 +265,3 @@ export default function AdminReportsPage() {
     </div>
   )
 }
-

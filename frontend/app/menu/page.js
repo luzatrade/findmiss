@@ -43,7 +43,9 @@ export default function MenuPage() {
     { icon: CreditCard, label: 'Abbonamenti', href: '/payments', color: 'text-amber-500' },
     { icon: Bell, label: 'Notifiche', href: '/settings', color: 'text-green-500' },
     { icon: Settings, label: 'Impostazioni', href: '/settings', color: 'text-gray-500' },
-    { icon: LayoutDashboard, label: 'Admin Panel', href: '/admin', color: 'text-indigo-500' },
+    ...(user.role === 'admin'
+      ? [{ icon: LayoutDashboard, label: 'Admin Panel', href: '/admin', color: 'text-indigo-500' }]
+      : []),
   ] : [
     { icon: Heart, label: 'Preferiti', href: '/saved', color: 'text-red-500' },
     { icon: HelpCircle, label: 'Assistenza', href: '/policy', color: 'text-blue-500' },

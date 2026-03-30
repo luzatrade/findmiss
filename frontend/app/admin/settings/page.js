@@ -27,13 +27,27 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    if (!token) {
+    const storedUser = localStorage.getItem('user')
+
+    if (!token || !storedUser) {
       router.push('/auth?redirect=/admin/settings')
       return
     }
+
+    try {
+      const user = JSON.parse(storedUser)
+      if (user.role !== 'admin') {
+        router.push('/')
+        return
+      }
+    } catch {
+      router.push('/auth?redirect=/admin/settings')
+      return
+    }
+
     // Carica impostazioni (se implementato backend)
     // loadSettings()
-  }, [])
+  }, [router])
 
   const handleSave = async () => {
     setLoading(true)

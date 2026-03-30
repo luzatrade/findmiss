@@ -29,21 +29,25 @@ export default function AdminPage() {
     const token = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
     
-    if (!token) {
+    if (!token || !storedUser) {
       router.push('/auth?redirect=/admin')
       return
     }
     
-    if (storedUser) {
-      try {
-        const u = JSON.parse(storedUser)
-        // Per ora permetti a tutti di vedere, in produzione: if (u.role !== 'admin')
-        setUser(u)
-      } catch {}
+    try {
+      const u = JSON.parse(storedUser)
+      if (u.role !== 'admin') {
+        router.push('/')
+        return
+      }
+      setUser(u)
+    } catch {
+      router.push('/auth?redirect=/admin')
+      return
     }
     
     loadData()
-  }, [])
+  }, [router])
 
   const loadData = async () => {
     setLoading(true)

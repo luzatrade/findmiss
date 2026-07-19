@@ -1,18 +1,16 @@
-const { generateSecret, generateURI, verifySync } = require('otplib');
+const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 
 const APP_NAME = 'Find Miss Admin';
 
+authenticator.options = { window: 1 };
+
 function generateTotpSecret() {
-  return generateSecret();
+  return authenticator.generateSecret();
 }
 
 function buildOtpAuthUrl(email, secret) {
-  return generateURI({
-    issuer: APP_NAME,
-    label: email,
-    secret,
-  });
+  return authenticator.keyuri(email, APP_NAME, secret);
 }
 
 async function buildQrDataUrl(otpAuthUrl) {
@@ -23,8 +21,7 @@ function verifyTotpCode(secret, code) {
   if (!secret || !code) return false;
   const normalized = String(code).replace(/\s/g, '');
   if (!/^\d{6}$/.test(normalized)) return false;
-  const result = verifySync({ secret, token: normalized });
-  return Boolean(result?.valid);
+  return authenticator.verify({ token: normalized, secret });
 }
 
 module.exports = {

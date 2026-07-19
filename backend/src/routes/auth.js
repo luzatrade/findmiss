@@ -3,6 +3,12 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const { validateAuthInput, sanitizeInput } = require('../middleware/validation');
+const {
+  issueAuthTokens,
+  createTwoFactorChallenge,
+  verifyTwoFactorChallenge,
+} = require('../services/authTokens');
+const { verifyTotpCode } = require('../services/totp');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -64,25 +70,11 @@ router.post('/register', async (req, res) => {
     });
 
     // Genera token
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    const refreshToken = jwt.sign({ userId: user.id }, JWT_REFRESH_SECRET, { expiresIn: '30d' });
-
-    // Salva refresh token
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        user_id: user.id,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      }
-    });
+    const authData = await issueAuthTokens(user);
 
     res.json({
       success: true,
-      data: {
-        user,
-        token,
-        refreshToken
-      }
+      data: authData,
     });
   } catch (error) {
     console.error('Errore registrazione:', error);
@@ -113,40 +105,75 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Credenziali non valide' });
     }
 
-    // Aggiorna last_login
     await prisma.user.update({
       where: { id: user.id },
-      data: { last_login: new Date() }
+      data: { last_login: new Date() },
     });
 
-    // Genera token
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    const refreshToken = jwt.sign({ userId: user.id }, JWT_REFRESH_SECRET, { expiresIn: '30d' });
+    if (user.role === 'admin' && user.totp_enabled && user.totp_secret) {
+      return res.json({
+        success: true,
+        data: {
+          requires2FA: true,
+          challengeToken: createTwoFactorChallenge(user.id),
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+          },
+        },
+      });
+    }
 
-    // Salva refresh token
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        user_id: user.id,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      }
-    });
+    const authData = await issueAuthTokens(user);
 
     res.json({
       success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          nickname: user.nickname,
-          role: user.role
-        },
-        token,
-        refreshToken
-      }
+      data: authData,
     });
   } catch (error) {
     console.error('Errore login:', error);
+    res.status(500).json({ success: false, error: 'Errore server' });
+  }
+});
+
+// Verifica codice Authenticator dopo login admin
+router.post('/2fa/verify', async (req, res) => {
+  try {
+    const { challengeToken, code } = req.body;
+
+    if (!challengeToken || !code) {
+      return res.status(400).json({ success: false, error: 'Codice Authenticator richiesto' });
+    }
+
+    let userId;
+    try {
+      userId = verifyTwoFactorChallenge(challengeToken);
+    } catch {
+      return res.status(401).json({ success: false, error: 'Sessione 2FA scaduta, rifai login' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'admin' || !user.is_active) {
+      return res.status(401).json({ success: false, error: 'Accesso non autorizzato' });
+    }
+
+    if (!user.totp_enabled || !user.totp_secret) {
+      return res.status(400).json({ success: false, error: '2FA non attivo su questo account' });
+    }
+
+    if (!verifyTotpCode(user.totp_secret, code)) {
+      return res.status(401).json({ success: false, error: 'Codice Authenticator non valido' });
+    }
+
+    const authData = await issueAuthTokens(user);
+
+    res.json({
+      success: true,
+      data: authData,
+    });
+  } catch (error) {
+    console.error('Errore verifica 2FA:', error);
     res.status(500).json({ success: false, error: 'Errore server' });
   }
 });

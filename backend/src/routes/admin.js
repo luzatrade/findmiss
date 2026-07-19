@@ -4,6 +4,13 @@ const { authenticate } = require('../middleware/auth');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { resetAllContent } = require('../services/resetContent');
+const {
+  generateTotpSecret,
+  buildOtpAuthUrl,
+  buildQrDataUrl,
+  verifyTotpCode,
+} = require('../services/totp');
+const { verifyPassword } = require('../services/authTokens');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -532,6 +539,112 @@ router.put('/users/:id/ban', authenticate, requireAdmin, async (req, res) => {
     });
     
     res.json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Errore server' });
+  }
+});
+
+// GET /api/admin/2fa/status
+router.get('/2fa/status', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { totp_enabled: true, email: true },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        enabled: Boolean(user?.totp_enabled),
+        email: user?.email,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Errore server' });
+  }
+});
+
+// POST /api/admin/2fa/setup - genera QR code Authenticator
+router.post('/2fa/setup', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const secret = generateTotpSecret();
+    const otpAuthUrl = buildOtpAuthUrl(req.user.email, secret);
+    const qrCodeDataUrl = await buildQrDataUrl(otpAuthUrl);
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        totp_secret: secret,
+        totp_enabled: false,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        secret,
+        otpAuthUrl,
+        qrCodeDataUrl,
+      },
+    });
+  } catch (error) {
+    console.error('Errore setup 2FA:', error);
+    res.status(500).json({ success: false, error: 'Errore setup Authenticator' });
+  }
+});
+
+// POST /api/admin/2fa/enable
+router.post('/2fa/enable', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { code } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+    if (!user?.totp_secret) {
+      return res.status(400).json({ success: false, error: 'Avvia prima la configurazione 2FA' });
+    }
+
+    if (!verifyTotpCode(user.totp_secret, code)) {
+      return res.status(401).json({ success: false, error: 'Codice Authenticator non valido' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { totp_enabled: true },
+    });
+
+    res.json({ success: true, message: 'Authenticator attivato' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Errore server' });
+  }
+});
+
+// POST /api/admin/2fa/disable
+router.post('/2fa/disable', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { code, password } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+    if (!user?.totp_enabled || !user?.totp_secret) {
+      return res.status(400).json({ success: false, error: '2FA non attivo' });
+    }
+
+    if (!password || !(await verifyPassword(password, user.password_hash))) {
+      return res.status(401).json({ success: false, error: 'Password non valida' });
+    }
+
+    if (!verifyTotpCode(user.totp_secret, code)) {
+      return res.status(401).json({ success: false, error: 'Codice Authenticator non valido' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        totp_enabled: false,
+        totp_secret: null,
+      },
+    });
+
+    res.json({ success: true, message: 'Authenticator disattivato' });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Errore server' });
   }

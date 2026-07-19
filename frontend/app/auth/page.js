@@ -24,6 +24,9 @@ export default function AuthPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
+  const [authStep, setAuthStep] = useState('credentials')
+  const [challengeToken, setChallengeToken] = useState(null)
+  const [twoFactorCode, setTwoFactorCode] = useState('')
 
   const resetFields = () => {
     setEmail('')
@@ -32,11 +35,23 @@ export default function AuthPage() {
     setNickname('')
     setError(null)
     setSuccess(null)
+    setAuthStep('credentials')
+    setChallengeToken(null)
+    setTwoFactorCode('')
   }
 
   const switchMode = (newMode) => {
     setMode(newMode)
     resetFields()
+  }
+
+  const completeLogin = (data) => {
+    localStorage.setItem('token', data.token)
+    localStorage.setItem('user', JSON.stringify(data.user))
+    setSuccess('Login effettuato!')
+    setTimeout(() => {
+      router.push(redirectTo)
+    }, 500)
   }
 
   const handleLogin = async (e) => {
@@ -62,14 +77,47 @@ export default function AuthPage() {
         setError(data?.error || 'Credenziali non valide')
         return
       }
-      
-      localStorage.setItem('token', data.data.token)
-      localStorage.setItem('user', JSON.stringify(data.data.user))
-      
-      setSuccess('Login effettuato!')
-      setTimeout(() => {
-        router.push(redirectTo)
-      }, 500)
+
+      if (data.data?.requires2FA) {
+        setChallengeToken(data.data.challengeToken)
+        setAuthStep('2fa')
+        setSuccess('Inserisci il codice da Google Authenticator')
+        return
+      }
+
+      completeLogin(data.data)
+    } catch {
+      setError('Errore di connessione')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleTwoFactorVerify = async (e) => {
+    e.preventDefault()
+    if (!twoFactorCode || twoFactorCode.length !== 6) {
+      setError('Inserisci il codice a 6 cifre')
+      return
+    }
+
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const res = await fetch(`${API_URL}/auth/2fa/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeToken, code: twoFactorCode }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data?.success) {
+        setError(data?.error || 'Codice non valido')
+        return
+      }
+
+      completeLogin(data.data)
     } catch {
       setError('Errore di connessione')
     } finally {
@@ -166,7 +214,56 @@ export default function AuthPage() {
           </div>
         )}
 
-        {/* Form */}
+        {authStep === '2fa' ? (
+          <form onSubmit={handleTwoFactorVerify} className="space-y-4">
+            <div className="text-center mb-2">
+              <p className="text-sm text-gray-600">
+                Apri Google Authenticator e inserisci il codice a 6 cifre per l&apos;account admin.
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">Codice Authenticator</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="w-full px-4 py-4 rounded-xl border border-gray-200 text-center text-2xl tracking-[0.4em] font-semibold focus:outline-none focus:ring-2 focus:ring-pink-500/40 focus:border-pink-500 bg-white"
+                placeholder="000000"
+                autoFocus
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-4 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold text-sm shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 transition disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Verifica...
+                </>
+              ) : (
+                'Verifica codice'
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthStep('credentials')
+                setChallengeToken(null)
+                setTwoFactorCode('')
+                setSuccess(null)
+                setError(null)
+              }}
+              className="w-full py-3 rounded-xl border border-gray-200 text-gray-700 text-sm hover:bg-gray-50 transition"
+            >
+              Torna al login
+            </button>
+          </form>
+        ) : (
         <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
           {mode === 'register' && (
             <div>
@@ -294,8 +391,10 @@ export default function AuthPage() {
             )}
           </button>
         </form>
+        )}
 
         {/* Switch mode */}
+        {authStep !== '2fa' && (
         <div className="mt-6 text-center">
           <p className="text-gray-500 text-sm">
             {mode === 'login' ? 'Non hai un account?' : 'Hai già un account?'}
@@ -307,9 +406,10 @@ export default function AuthPage() {
             </button>
           </p>
         </div>
+        )}
 
         {/* Terms */}
-        {mode === 'register' && (
+        {mode === 'register' && authStep !== '2fa' && (
           <p className="mt-6 text-center text-xs text-gray-400">
             Registrandoti accetti i nostri{' '}
             <Link href="/policy" className="text-pink-500 hover:underline">

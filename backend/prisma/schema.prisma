@@ -24,6 +24,8 @@ model User {
   is_verified   Boolean   @default(false)
   ghost_mode    Boolean   @default(false)
   privacy_mode  String    @default("standard") // standard, anonymous, ghost
+  totp_secret   String?
+  totp_enabled  Boolean   @default(false)
   followers_count Int     @default(0)
   following_count Int     @default(0)
   created_at    DateTime  @default(now())

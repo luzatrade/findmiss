@@ -15,6 +15,13 @@ export default function AdminSettingsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [totpEnabled, setTotpEnabled] = useState(false)
+  const [totpLoading, setTotpLoading] = useState(true)
+  const [totpSetup, setTotpSetup] = useState(null)
+  const [totpCode, setTotpCode] = useState('')
+  const [disablePassword, setDisablePassword] = useState('')
+  const [totpMessage, setTotpMessage] = useState(null)
+  const [totpError, setTotpError] = useState(null)
   const [settings, setSettings] = useState({
     siteName: 'FindMiss',
     siteDescription: 'Piattaforma di annunci per adulti',
@@ -40,6 +47,7 @@ export default function AdminSettingsPage() {
         router.push('/')
         return
       }
+      loadTwoFactorStatus(token)
     } catch {
       router.push('/auth?redirect=/admin/settings')
       return
@@ -48,6 +56,108 @@ export default function AdminSettingsPage() {
     // Carica impostazioni (se implementato backend)
     // loadSettings()
   }, [router])
+
+  const loadTwoFactorStatus = async (token) => {
+    try {
+      setTotpLoading(true)
+      const res = await fetch(`${API_URL}/admin/2fa/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (data.success) {
+        setTotpEnabled(Boolean(data.data.enabled))
+      }
+    } catch (error) {
+      console.error('Errore 2FA status:', error)
+    } finally {
+      setTotpLoading(false)
+    }
+  }
+
+  const startTwoFactorSetup = async () => {
+    const token = localStorage.getItem('token')
+    setTotpError(null)
+    setTotpMessage(null)
+    setTotpLoading(true)
+
+    try {
+      const res = await fetch(`${API_URL}/admin/2fa/setup`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Errore configurazione Authenticator')
+      }
+      setTotpSetup(data.data)
+      setTotpMessage('Scansiona il QR code con Google Authenticator, poi inserisci il codice.')
+    } catch (error) {
+      setTotpError(error.message)
+    } finally {
+      setTotpLoading(false)
+    }
+  }
+
+  const enableTwoFactor = async () => {
+    const token = localStorage.getItem('token')
+    setTotpError(null)
+    setTotpMessage(null)
+    setTotpLoading(true)
+
+    try {
+      const res = await fetch(`${API_URL}/admin/2fa/enable`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: totpCode }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Codice non valido')
+      }
+      setTotpEnabled(true)
+      setTotpSetup(null)
+      setTotpCode('')
+      setTotpMessage('Authenticator attivato con successo.')
+    } catch (error) {
+      setTotpError(error.message)
+    } finally {
+      setTotpLoading(false)
+    }
+  }
+
+  const disableTwoFactor = async () => {
+    const token = localStorage.getItem('token')
+    setTotpError(null)
+    setTotpMessage(null)
+    setTotpLoading(true)
+
+    try {
+      const res = await fetch(`${API_URL}/admin/2fa/disable`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: totpCode, password: disablePassword }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Disattivazione fallita')
+      }
+      setTotpEnabled(false)
+      setTotpSetup(null)
+      setTotpCode('')
+      setDisablePassword('')
+      setTotpMessage('Authenticator disattivato.')
+    } catch (error) {
+      setTotpError(error.message)
+    } finally {
+      setTotpLoading(false)
+    }
+  }
 
   const handleSave = async () => {
     setLoading(true)
@@ -96,6 +206,108 @@ export default function AdminSettingsPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="space-y-6">
+          {/* Authenticator Admin */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Key className="text-pink-500" size={20} />
+              <h2 className="font-semibold text-gray-900">Google Authenticator (Admin)</h2>
+            </div>
+
+            {totpError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {totpError}
+              </div>
+            )}
+            {totpMessage && (
+              <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                {totpMessage}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">Stato 2FA</p>
+                  <p className="text-sm text-gray-500">
+                    {totpEnabled ? 'Attivo: login admin protetto da codice' : 'Non attivo'}
+                  </p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${totpEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {totpEnabled ? 'ATTIVO' : 'OFF'}
+                </span>
+              </div>
+
+              {!totpEnabled && !totpSetup && (
+                <button
+                  onClick={startTwoFactorSetup}
+                  disabled={totpLoading}
+                  className="px-4 py-2 rounded-lg bg-pink-500 text-white text-sm font-medium hover:bg-pink-600 disabled:opacity-50"
+                >
+                  {totpLoading ? 'Caricamento...' : 'Configura Authenticator'}
+                </button>
+              )}
+
+              {totpSetup && !totpEnabled && (
+                <div className="space-y-4 border border-gray-100 rounded-xl p-4 bg-gray-50">
+                  {totpSetup.qrCodeDataUrl && (
+                    <img
+                      src={totpSetup.qrCodeDataUrl}
+                      alt="QR code Authenticator"
+                      className="mx-auto w-48 h-48 rounded-lg border border-gray-200 bg-white p-2"
+                    />
+                  )}
+                  <p className="text-xs text-gray-500 break-all">
+                    Codice manuale: <span className="font-mono text-gray-700">{totpSetup.secret}</span>
+                  </p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Codice a 6 cifre"
+                    className="w-full px-3 py-3 border border-gray-200 rounded-lg text-center tracking-[0.3em] font-semibold"
+                  />
+                  <button
+                    onClick={enableTwoFactor}
+                    disabled={totpLoading || totpCode.length !== 6}
+                    className="w-full px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Attiva Authenticator
+                  </button>
+                </div>
+              )}
+
+              {totpEnabled && (
+                <div className="space-y-3 border border-gray-100 rounded-xl p-4 bg-gray-50">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Codice Authenticator"
+                    className="w-full px-3 py-3 border border-gray-200 rounded-lg text-center tracking-[0.3em] font-semibold"
+                  />
+                  <input
+                    type="password"
+                    value={disablePassword}
+                    onChange={(e) => setDisablePassword(e.target.value)}
+                    placeholder="Password admin"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                  />
+                  <button
+                    onClick={disableTwoFactor}
+                    disabled={totpLoading || totpCode.length !== 6 || !disablePassword}
+                    className="w-full px-4 py-2 rounded-lg border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 disabled:opacity-50"
+                  >
+                    Disattiva Authenticator
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Impostazioni Generali */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center gap-2 mb-4">

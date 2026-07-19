@@ -1,8 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 
-import { MapPin, Search, Heart, Check, X, Sparkles, Users, Video } from 'lucide-react'
+import { MapPin, Search, Heart, Check, X, Sparkles, Users, Video, Menu } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import CitySelector from '../components/CitySelector'
 import AdvancedFilters from '../components/AdvancedFilters'
 import UserMenu from '../components/UserMenu'
@@ -22,9 +23,11 @@ const CATEGORIES = [
 ]
 
 export default function HomePage() {
+  const router = useRouter()
   const [showCityModal, setShowCityModal] = useState(false)
   const [showFiltersModal, setShowFiltersModal] = useState(false)
   const [showMenuModal, setShowMenuModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedCity, setSelectedCity] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [filters, setFilters] = useState(null)
@@ -94,6 +97,16 @@ export default function HomePage() {
 
     fetchAnnouncements()
   }, [])
+
+  const handleSearchSubmit = (e) => {
+    e?.preventDefault?.()
+    const query = searchQuery.trim()
+    if (!query) {
+      router.push('/filtri')
+      return
+    }
+    router.push(`/filtri?q=${encodeURIComponent(query)}`)
+  }
 
   const guessCityFromCoords = (lat, lng) => {
     if (!lat || !lng) return null
@@ -221,7 +234,21 @@ export default function HomePage() {
               </div>
             )}
             <NotificationsBell />
+            <button
+              onClick={() => setShowMenuModal(true)}
+              className="p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
+              aria-label="Apri menu"
+            >
+              <Menu size={22} />
+            </button>
           </div>
+          <button
+            onClick={() => setShowMenuModal(true)}
+            className="sm:hidden p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
+            aria-label="Apri menu"
+          >
+            <Menu size={22} />
+          </button>
         </div>
       </div>
 
@@ -232,18 +259,28 @@ export default function HomePage() {
       <div className="pb-24">
         <div className="max-w-6xl mx-auto px-4 pt-4 space-y-4">
           {/* Search Bar */}
-          <div className="flex items-center gap-2">
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
             <div className="flex-1 relative">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
                 <Search size={18} />
               </div>
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cerca città, nome, servizi..."
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40 focus:border-pink-500 placeholder:text-gray-400 shadow-sm"
               />
             </div>
             <button
+              type="submit"
+              className="inline-flex items-center gap-2 px-4 py-3 rounded-xl border border-pink-500 text-pink-600 bg-pink-50 text-sm font-medium hover:bg-pink-100 transition"
+            >
+              <Search size={18} />
+              <span className="hidden sm:inline">Cerca</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setShowFiltersModal(true)}
               className={`hidden sm:inline-flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition ${
                 filters 
@@ -254,7 +291,7 @@ export default function HomePage() {
               <Search size={18} />
               Filtri
             </button>
-          </div>
+          </form>
 
           {/* Categories */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">

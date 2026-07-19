@@ -238,7 +238,7 @@ export default function SettingsPage() {
           </div>
           
           <Link
-            href="/settings/password"
+            href="/profile/edit"
             className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition border-t border-gray-100"
           >
             <div className="flex items-center gap-3">
@@ -249,26 +249,25 @@ export default function SettingsPage() {
           </Link>
           
           <Link
-            href="/settings/email"
+            href="/profile/edit"
             className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition border-t border-gray-100"
           >
             <div className="flex items-center gap-3">
               <Mail size={20} className="text-gray-400" />
-              <span className="font-medium text-gray-900">Cambia email</span>
+              <span className="font-medium text-gray-900">Modifica profilo</span>
             </div>
             <ChevronRight size={20} className="text-gray-400" />
           </Link>
           
-          <Link
-            href="/settings/sessions"
-            className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition border-t border-gray-100"
-          >
+          <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 opacity-60">
             <div className="flex items-center gap-3">
               <Smartphone size={20} className="text-gray-400" />
-              <span className="font-medium text-gray-900">Sessioni attive</span>
+              <div>
+                <span className="font-medium text-gray-900 block">Sessioni attive</span>
+                <span className="text-xs text-gray-500">Prossimamente</span>
+              </div>
             </div>
-            <ChevronRight size={20} className="text-gray-400" />
-          </Link>
+          </div>
         </section>
 
         {/* Display */}

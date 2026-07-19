@@ -98,7 +98,7 @@ export default function UserMenu({ isOpen, onClose }) {
               <div className="h-px bg-gray-100 my-4" />
 
               <button 
-                onClick={() => handleNavigation('/auth')}
+                onClick={() => handleNavigation('/auth?redirect=/announcements/new')}
                 className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 p-4 rounded-xl flex items-center gap-4 transition text-white"
               >
                 <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
@@ -132,7 +132,7 @@ export default function UserMenu({ isOpen, onClose }) {
 
               {/* Menu items loggato */}
               <button 
-                onClick={() => handleNavigation(`/profile/${user?.id}`)}
+                onClick={() => handleNavigation('/profile/edit')}
                 className="w-full bg-gray-50 hover:bg-gray-100 p-4 rounded-xl flex items-center gap-4 transition"
               >
                 <User size={24} className="text-pink-500" />

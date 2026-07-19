@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, MapPin, CheckCircle, ArrowLeft, Search, Sparkles, Users, Video, X } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api';
 import { FALLBACK_ANNOUNCEMENTS } from '../../lib/fallback-announcements';
 
@@ -22,11 +23,55 @@ const CATEGORY_BADGES = {
 }
 
 export default function FiltriPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loadWarning, setLoadWarning] = useState(null);
+  const [favoriteIds, setFavoriteIds] = useState([]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('favorites') || '[]');
+      setFavoriteIds(stored);
+    } catch {
+      setFavoriteIds([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const city = searchParams.get('city');
+    const q = searchParams.get('q');
+    if (city) setSearchQuery(city);
+    else if (q) setSearchQuery(q);
+  }, [searchParams]);
+
+  const toggleFavorite = (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const stored = JSON.parse(localStorage.getItem('favorites') || '[]');
+      const idStr = String(id);
+      const updated = stored.includes(idStr)
+        ? stored.filter((item) => item !== idStr)
+        : [...stored, idStr];
+      localStorage.setItem('favorites', JSON.stringify(updated));
+      setFavoriteIds(updated);
+    } catch {}
+  };
+
+  const openChat = (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push(`/auth?redirect=${encodeURIComponent(`/chat?announcement=${id}`)}`);
+      return;
+    }
+    router.push(`/chat?announcement=${id}`);
+  };
 
   const fetchAnnouncements = async () => {
     try {
@@ -210,10 +255,22 @@ export default function FiltriPage() {
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-sm font-bold text-pink-500">{announcement.price}€/h</span>
                     <div className="flex space-x-1">
-                      <button className="p-1.5 text-gray-400 hover:text-pink-500 transition rounded-full hover:bg-pink-50">
-                        <Heart className="w-4 h-4" />
+                      <button
+                        type="button"
+                        onClick={(e) => toggleFavorite(e, announcement.id)}
+                        className={`p-1.5 transition rounded-full hover:bg-pink-50 ${
+                          favoriteIds.includes(String(announcement.id))
+                            ? 'text-pink-500'
+                            : 'text-gray-400 hover:text-pink-500'
+                        }`}
+                      >
+                        <Heart className={`w-4 h-4 ${favoriteIds.includes(String(announcement.id)) ? 'fill-current' : ''}`} />
                       </button>
-                      <button className="p-1.5 text-gray-400 hover:text-pink-500 transition rounded-full hover:bg-pink-50">
+                      <button
+                        type="button"
+                        onClick={(e) => openChat(e, announcement.id)}
+                        className="p-1.5 text-gray-400 hover:text-pink-500 transition rounded-full hover:bg-pink-50"
+                      >
                         <MessageCircle className="w-4 h-4" />
                       </button>
                     </div>

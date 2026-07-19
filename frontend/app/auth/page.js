@@ -269,7 +269,11 @@ export default function AuthPage() {
           
           {mode === 'login' && (
             <div className="flex justify-end">
-              <button type="button" className="text-sm text-pink-500 hover:underline">
+              <button
+                type="button"
+                onClick={() => window.location.href = 'mailto:support@findmiss.it?subject=Recupero password'}
+                className="text-sm text-pink-500 hover:underline"
+              >
                 Password dimenticata?
               </button>
             </div>

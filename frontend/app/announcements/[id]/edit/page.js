@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
@@ -12,7 +12,7 @@ import { getApiUrl } from '../../../../lib/runtime-api'
 const API_URL = getApiUrl()
 
 export default function EditAnnouncementPage({ params }) {
-  const resolvedParams = use(params)
+  const announcementId = params.id
   const router = useRouter()
   
   const [loading, setLoading] = useState(true)
@@ -53,7 +53,7 @@ export default function EditAnnouncementPage({ params }) {
       return
     }
     loadData()
-  }, [resolvedParams.id])
+  }, [announcementId])
 
   const loadData = async () => {
     try {
@@ -62,7 +62,7 @@ export default function EditAnnouncementPage({ params }) {
       
       // Carica dati annuncio, città e categorie in parallelo
       const [announcementRes, citiesRes, categoriesRes] = await Promise.all([
-        fetch(`${API_URL}/announcements/${resolvedParams.id}`, {
+        fetch(`${API_URL}/announcements/${announcementId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch(`${API_URL}/cities`),
@@ -147,7 +147,7 @@ export default function EditAnnouncementPage({ params }) {
       const token = localStorage.getItem('token')
       
       // Aggiorna annuncio
-      const res = await fetch(`${API_URL}/announcements/${resolvedParams.id}`, {
+      const res = await fetch(`${API_URL}/announcements/${announcementId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ export default function EditAnnouncementPage({ params }) {
           newPhotos.forEach(photo => {
             uploadFormData.append('files', photo)
           })
-          uploadFormData.append('announcement_id', resolvedParams.id)
+          uploadFormData.append('announcement_id', announcementId)
           
           await fetch(`${API_URL}/upload/media`, {
             method: 'POST',

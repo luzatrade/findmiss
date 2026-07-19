@@ -1,4 +1,4 @@
-const BASE_URL = 'https://www.findmiss.it';
+import { SITE_URL } from '../lib/seo'
 
 export default function robots() {
   return {
@@ -12,15 +12,18 @@ export default function robots() {
           '/auth',
           '/chat',
           '/settings',
+          '/saved',
           '/my-announcements',
           '/payments',
+          '/menu',
           '/profile/edit',
           '/announcements/new',
+          '/announcements/*/edit',
           '/stories/create',
         ],
       },
     ],
-    sitemap: `${BASE_URL}/sitemap.xml`,
-    host: BASE_URL,
-  };
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
+  }
 }

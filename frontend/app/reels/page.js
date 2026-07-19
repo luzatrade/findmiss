@@ -286,7 +286,7 @@ export default function ReelsPage() {
       window.location.href = `tel:${reel.phone}`
     } else {
       // Altrimenti vai all'annuncio nella sezione contatti
-      router.push(`/announcements/${reel.id}#contact`)
+      router.push(`/profile/${reel.id}`)
     }
   }
 

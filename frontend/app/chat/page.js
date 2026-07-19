@@ -1,48 +1,81 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, Send, Image, MoreVertical, Phone, Video, Check, CheckCheck, Loader2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
+import { useSocket } from '../components/SocketProvider'
 
 import { getApiUrl } from '../../lib/runtime-api'
 
 const API_URL = getApiUrl()
 
-// Hook personalizzato per socket con fallback
-function useSocketSafe() {
-  const [socketState, setSocketState] = useState({ socket: null, connected: false })
-  
-  useEffect(() => {
-    // Importa dinamicamente solo lato client
-    import('../components/SocketProvider').then(module => {
-      // Il socket verrà gestito dal provider nel layout
-    }).catch(() => {})
-  }, [])
-  
-  return socketState
-}
-
 export default function ChatPage() {
   const router = useRouter()
-  const { socket, connected } = useSocketSafe()
+  const searchParams = useSearchParams()
+  const { socket, connected } = useSocket()
   const [conversations, setConversations] = useState([])
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const [chatError, setChatError] = useState(null)
   const messagesEndRef = useRef(null)
+  const announcementHandled = useRef(false)
 
   // Controlla autenticazione
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/auth')
+      const redirect = searchParams.get('announcement')
+        ? `/chat?announcement=${searchParams.get('announcement')}`
+        : '/chat'
+      router.push(`/auth?redirect=${encodeURIComponent(redirect)}`)
       return
     }
     loadConversations()
   }, [])
+
+  useEffect(() => {
+    const announcementId = searchParams.get('announcement')
+    if (!announcementId || announcementHandled.current) return
+
+    const startConversation = async () => {
+      announcementHandled.current = true
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      try {
+        setChatError(null)
+        const res = await fetch(`${API_URL}/announcements/${announcementId}/contact`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (data.success && data.data?.conversation_id) {
+          const convRes = await fetch(`${API_URL}/chat/conversations`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          const convData = await convRes.json()
+          if (convData.success) {
+            setConversations(convData.data || [])
+            const conversation = (convData.data || []).find(
+              (c) => c.id === data.data.conversation_id
+            )
+            if (conversation) {
+              await selectConversation(conversation)
+            }
+          }
+        } else {
+          setChatError(data.error || 'Impossibile avviare la conversazione')
+        }
+      } catch {
+        setChatError('Errore durante l\'apertura della chat')
+      }
+    }
+
+    startConversation()
+  }, [searchParams])
 
   // Socket listeners
   useEffect(() => {
@@ -195,6 +228,11 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
+      {chatError && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-700 text-center">
+          {chatError}
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">

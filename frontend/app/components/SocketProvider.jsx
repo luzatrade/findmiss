@@ -63,8 +63,5 @@ export function SocketProvider({ children, token }) {
 
 export function useSocket() {
   const context = useContext(SocketContext)
-  if (!context) {
-    throw new Error('useSocket deve essere usato dentro SocketProvider')
-  }
-  return context
+  return context || { socket: null, connected: false }
 }

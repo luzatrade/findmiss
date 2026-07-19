@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl } from '../../../lib/runtime-api'
+import { validateMediaFile } from '../../../lib/media'
 
 const API_URL = getApiUrl()
 
@@ -199,7 +200,15 @@ export default function NewAnnouncementPage() {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
 
-    const newPhotos = [...photos, ...files].slice(0, 10) // Max 10 foto
+    for (const file of files) {
+      const validationError = validateMediaFile(file)
+      if (validationError) {
+        setErrors((prev) => ({ ...prev, photos: validationError }))
+        return
+      }
+    }
+
+    const newPhotos = [...photos, ...files].slice(0, 10)
     const previews = newPhotos.map((file) => URL.createObjectURL(file))
 
     setPhotos(newPhotos)

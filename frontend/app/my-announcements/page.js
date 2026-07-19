@@ -9,6 +9,8 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api'
+import OptimizedImage from '../../components/OptimizedImage'
+import { MEDIA_SIZES } from '../../lib/media'
 
 const API_URL = getApiUrl()
 
@@ -244,13 +246,11 @@ export default function MyAnnouncementsPage() {
                 <div className="flex flex-col sm:flex-row">
                   {/* Image */}
                   <div className="sm:w-48 h-48 sm:h-auto relative bg-gray-100">
-                    <img
-                      src={toAbsoluteMediaUrl(
-                        announcement.media?.[0]?.url || announcement.media?.[0]?.thumbnail_url,
-                        getApiOrigin(),
-                        'https://via.placeholder.com/200x200?text=No+Image'
-                      )}
+                    <OptimizedImage
+                      media={announcement.media?.[0]}
                       alt={announcement.title}
+                      variant="thumb"
+                      sizes={MEDIA_SIZES.card}
                       className="w-full h-full object-cover"
                     />
                     {announcement.is_vip && (

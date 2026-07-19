@@ -10,8 +10,10 @@ import UserMenu from '../components/UserMenu'
 import NotificationsBell from './components/NotificationsBell'
 import StoriesBar from './components/StoriesBar'
 import { LogoLight } from './components/Logo'
+import OptimizedImage from '../components/OptimizedImage'
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../lib/runtime-api'
 import { FALLBACK_ANNOUNCEMENTS } from '../lib/fallback-announcements'
+import { MEDIA_SIZES } from '../lib/media'
 
 // Nuove categorie
 const CATEGORIES = [
@@ -75,7 +77,8 @@ export default function HomePage() {
             verified: a.is_verified || false,
             vip: a.is_vip || false,
             availableNow: a.is_available_now || false,
-            image: toImageUrl(a.media?.[0]?.url || a.media?.[0]?.thumbnail_url),
+            image: toImageUrl(a.media?.[0]?.thumbnail_url || a.media?.[0]?.url),
+            media: a.media?.[0] || null,
             hairColor: a.hair_color,
             eyeColor: a.eye_color,
             cupSize: a.cup_size,
@@ -438,9 +441,12 @@ export default function HomePage() {
                 >
                   <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-pink-300 hover:shadow-lg transition-all duration-300">
                     <div className="relative aspect-[3/4] bg-gray-100 overflow-hidden">
-                      <img
+                      <OptimizedImage
+                        media={announcement.media}
                         src={announcement.image}
                         alt={announcement.title}
+                        variant="thumb"
+                        sizes={MEDIA_SIZES.card}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       {/* Gradient overlay */}

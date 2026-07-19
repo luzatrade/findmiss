@@ -3,6 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const { resetAllContent } = require('../services/resetContent');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -533,6 +534,30 @@ router.put('/users/:id/ban', authenticate, requireAdmin, async (req, res) => {
     res.json({ success: true, data: user });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Errore server' });
+  }
+});
+
+// POST /api/admin/reset-content - Svuota annunci, media, utenti non admin
+router.post('/reset-content', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { confirm } = req.body || {};
+    if (confirm !== 'RESET_ALL_CONTENT') {
+      return res.status(400).json({
+        success: false,
+        error: 'Conferma richiesta: { "confirm": "RESET_ALL_CONTENT" }',
+      });
+    }
+
+    const result = await resetAllContent(prisma);
+
+    res.json({
+      success: true,
+      message: 'Contenuti resettati. Admin preservati.',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Errore reset contenuti:', error);
+    res.status(500).json({ success: false, error: error.message || 'Errore server' });
   }
 });
 

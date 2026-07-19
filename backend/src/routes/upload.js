@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
-const { compressImage } = require('../services/imageCompression');
+const { processImage } = require('../services/imageCompression');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -58,22 +58,20 @@ const handleSingleUpload = async (req, res) => {
 
     const file = req.file;
     const isVideo = file.mimetype.startsWith('video');
-    const type = isVideo ? 'videos' : 'images';
-    const fileUrl = `/uploads/${type}/${file.filename}`;
+    let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${file.filename}`;
+    let thumbnailUrl = null;
 
-    if (!isVideo && compressImage) {
-      try {
-        await compressImage(file.path);
-      } catch (err) {
-        console.warn('Compressione immagine fallita:', err.message);
-      }
+    if (!isVideo) {
+      const optimized = await optimizeUploadedImage(file);
+      fileUrl = optimized.fileUrl;
+      thumbnailUrl = optimized.thumbnailUrl;
     }
 
     res.json({
       success: true,
       data: {
         url: fileUrl,
-        thumbnail_url: null,
+        thumbnail_url: thumbnailUrl,
         type: isVideo ? 'video' : 'image',
         filename: file.filename,
         size: file.size,
@@ -86,22 +84,36 @@ const handleSingleUpload = async (req, res) => {
   }
 };
 
+async function optimizeUploadedImage(file) {
+  let fileUrl = `/uploads/images/${file.filename}`;
+  let thumbnailUrl = null;
+
+  try {
+    const processed = await processImage(file.path);
+    fileUrl = processed.url;
+    thumbnailUrl = processed.thumbnail_url;
+  } catch (err) {
+    console.warn('Ottimizzazione immagine fallita:', err.message);
+  }
+
+  return { fileUrl, thumbnailUrl };
+}
+
 async function buildUploadedFileRecord(file, index, basePosition, hasPrimary, isReel) {
   const isVideo = file.mimetype.startsWith('video');
-  const typeFolder = isVideo ? 'videos' : 'images';
-  const fileUrl = `/uploads/${typeFolder}/${file.filename}`;
+  let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${file.filename}`;
+  let thumbnailUrl = null;
 
-  if (!isVideo && compressImage) {
-    try {
-      await compressImage(file.path);
-    } catch (err) {
-      console.warn('Compressione immagine fallita:', err.message);
-    }
+  if (!isVideo) {
+    const optimized = await optimizeUploadedImage(file);
+    fileUrl = optimized.fileUrl;
+    thumbnailUrl = optimized.thumbnailUrl;
   }
 
   return {
     type: isVideo ? 'video' : 'image',
     url: fileUrl,
+    thumbnail_url: thumbnailUrl,
     position: basePosition + index,
     is_primary: !hasPrimary && index === 0 && !isVideo,
     is_reel: Boolean(isReel && isVideo),
@@ -166,9 +178,11 @@ async function persistAnnouncementMedia(req, res) {
           announcement_id,
           type: prepared.type,
           url: prepared.url,
+          thumbnail_url: prepared.thumbnail_url,
           position: prepared.position,
           is_primary: prepared.is_primary,
           is_reel: prepared.is_reel,
+          metadata_removed: prepared.type === 'image',
         },
       });
 
@@ -205,20 +219,18 @@ router.post('/multiple', authenticate, upload.array('files', 10), async (req, re
 
     const results = await Promise.all(req.files.map(async (file) => {
       const isVideo = file.mimetype.startsWith('video');
-      const type = isVideo ? 'videos' : 'images';
-      const fileUrl = `/uploads/${type}/${file.filename}`;
+      let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${file.filename}`;
+      let thumbnailUrl = null;
 
-      // Comprimi immagini
-      if (!isVideo && compressImage) {
-        try {
-          await compressImage(file.path);
-        } catch (err) {
-          console.warn('Compressione immagine fallita:', err.message);
-        }
+      if (!isVideo) {
+        const optimized = await optimizeUploadedImage(file);
+        fileUrl = optimized.fileUrl;
+        thumbnailUrl = optimized.thumbnailUrl;
       }
 
       return {
         url: fileUrl,
+        thumbnail_url: thumbnailUrl,
         type: isVideo ? 'video' : 'image',
         filename: file.filename,
         size: file.size,

@@ -9,6 +9,9 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api'
+import OptimizedVideo from '../../components/OptimizedVideo'
+import OptimizedImage from '../../components/OptimizedImage'
+import { validateMediaFile } from '../../lib/media'
 
 const API_URL = getApiUrl()
 
@@ -442,19 +445,21 @@ export default function ReelsPage() {
             {/* Video/Image */}
             <div className="absolute inset-0">
               {reel.media?.[0]?.type === 'video' ? (
-                <video
-                  ref={el => videoRefs.current[index] = el}
-                  src={reel.media[0].url}
+                <OptimizedVideo
+                  ref={(el) => { videoRefs.current[index] = el }}
+                  media={reel.media[0]}
                   className="w-full h-full object-cover"
                   loop
                   muted={isMuted}
                   playsInline
+                  preload="metadata"
                   onClick={() => setIsPlaying(!isPlaying)}
                 />
               ) : reel.media?.[0]?.url ? (
-                <img
-                  src={reel.media[0].url}
-                  alt=""
+                <OptimizedImage
+                  media={reel.media[0]}
+                  alt={reel.stage_name || reel.title || 'Reel'}
+                  variant="full"
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -743,6 +748,11 @@ export default function ReelsPage() {
                   onChange={(e) => {
                     const file = e.target.files?.[0]
                     if (file) {
+                      const validationError = validateMediaFile(file)
+                      if (validationError) {
+                        setUploadError(validationError)
+                        return
+                      }
                       setUploadData(prev => ({ ...prev, video: file }))
                       setUploadError('')
                     }

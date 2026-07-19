@@ -6,6 +6,7 @@ const {
   getFallbackAnnouncements,
   getFallbackAnnouncementById
 } = require('../data/fallbackData');
+const { isDemoFallbackEnabled } = require('../config/demoMode');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -259,13 +260,23 @@ router.get('/', optionalAuth, async (req, res) => {
     const {
       page = 1,
       limit = 20,
-      city,
-      category
     } = req.query;
 
     const parsedPage = Math.max(1, Number.parseInt(page, 10) || 1);
     const parsedLimit = Math.max(1, Number.parseInt(limit, 10) || 20);
-    const fallbackList = getFallbackAnnouncements({ city, category });
+
+    if (!isDemoFallbackEnabled()) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: { page: parsedPage, limit: parsedLimit, total: 0, pages: 0 },
+      });
+    }
+
+    const fallbackList = getFallbackAnnouncements({
+      city: req.query.city,
+      category: req.query.category,
+    });
     const start = (parsedPage - 1) * parsedLimit;
     const paginated = fallbackList.slice(start, start + parsedLimit);
 
@@ -276,9 +287,9 @@ router.get('/', optionalAuth, async (req, res) => {
         page: parsedPage,
         limit: parsedLimit,
         total: fallbackList.length,
-        pages: Math.ceil(fallbackList.length / parsedLimit)
+        pages: Math.ceil(fallbackList.length / parsedLimit),
       },
-      fallback: true
+      fallback: true,
     });
   }
 });
@@ -414,7 +425,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
     });
 
     if (!announcement) {
-      const fallback = getFallbackAnnouncementById(id);
+      const fallback = isDemoFallbackEnabled() ? getFallbackAnnouncementById(id) : null;
       if (fallback) {
         const fallbackRating =
           fallback.reviews && fallback.reviews.length > 0
@@ -477,7 +488,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Errore fetch annuncio:', error);
-    const fallback = getFallbackAnnouncementById(req.params.id);
+    const fallback = isDemoFallbackEnabled()
+      ? getFallbackAnnouncementById(req.params.id)
+      : null;
     if (fallback) {
       const fallbackRating =
         fallback.reviews && fallback.reviews.length > 0

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   ArrowLeft, Settings, Save, Globe, Shield, Bell, 
-  Database, Server, Mail, Key, Loader2, CheckCircle
+  Database, Server, Mail, Key, Loader2, CheckCircle, Trash2, AlertTriangle
 } from 'lucide-react'
 
 import { getApiUrl } from '../../../lib/runtime-api'
@@ -22,6 +22,10 @@ export default function AdminSettingsPage() {
   const [disablePassword, setDisablePassword] = useState('')
   const [totpMessage, setTotpMessage] = useState(null)
   const [totpError, setTotpError] = useState(null)
+  const [resetConfirm, setResetConfirm] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetMessage, setResetMessage] = useState(null)
+  const [resetError, setResetError] = useState(null)
   const [settings, setSettings] = useState({
     siteName: 'FindMiss',
     siteDescription: 'Piattaforma di annunci per adulti',
@@ -163,10 +167,6 @@ export default function AdminSettingsPage() {
     setLoading(true)
     setSaved(false)
     try {
-      // Qui salveresti le impostazioni via API
-      // await fetch(`${API_URL}/admin/settings`, { ... })
-      
-      // Simulazione salvataggio
       await new Promise(resolve => setTimeout(resolve, 1000))
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -174,6 +174,40 @@ export default function AdminSettingsPage() {
       console.error('Errore:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const resetAllContent = async () => {
+    if (resetConfirm !== 'RESET_ALL_CONTENT') {
+      setResetError('Digita esattamente RESET_ALL_CONTENT per confermare')
+      return
+    }
+
+    const token = localStorage.getItem('token')
+    setResetLoading(true)
+    setResetError(null)
+    setResetMessage(null)
+
+    try {
+      const res = await fetch(`${API_URL}/admin/reset-content`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ confirm: 'RESET_ALL_CONTENT' }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Reset fallito')
+      }
+
+      setResetConfirm('')
+      setResetMessage('Contenuti eliminati. Annunci, foto, utenti non admin e chat rimossi. Gli admin sono stati preservati.')
+    } catch (error) {
+      setResetError(error.message)
+    } finally {
+      setResetLoading(false)
     }
   }
 
@@ -417,6 +451,50 @@ export default function AdminSettingsPage() {
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
                 </label>
               </div>
+            </div>
+          </div>
+
+          {/* Reset contenuti */}
+          <div className="bg-white rounded-xl border border-red-200 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Trash2 className="text-red-500" size={20} />
+              <h2 className="font-semibold text-gray-900">Reset contenuti sito</h2>
+            </div>
+
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 flex gap-2">
+              <AlertTriangle className="shrink-0 mt-0.5" size={16} />
+              <p>
+                Elimina tutti gli annunci, le foto, i video, chat, utenti non admin e contenuti collegati.
+                Gli account admin, le città, le categorie e i piani premium restano intatti.
+              </p>
+            </div>
+
+            {resetError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {resetError}
+              </div>
+            )}
+            {resetMessage && (
+              <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                {resetMessage}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={resetConfirm}
+                onChange={(e) => setResetConfirm(e.target.value)}
+                placeholder="Digita RESET_ALL_CONTENT"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg font-mono text-sm"
+              />
+              <button
+                onClick={resetAllContent}
+                disabled={resetLoading || resetConfirm !== 'RESET_ALL_CONTENT'}
+                className="w-full px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {resetLoading ? 'Reset in corso...' : 'Elimina tutti i contenuti'}
+              </button>
             </div>
           </div>
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api';
 import { FALLBACK_ANNOUNCEMENTS } from '../../lib/fallback-announcements';
+import { isDemoFallbackEnabled } from '../../lib/demoMode';
 
 // Nuove categorie
 const CATEGORIES = [
@@ -110,8 +111,13 @@ export default function FiltriPage() {
       }
     } catch (err) {
       console.error('Errore caricamento annunci:', err);
-      setLoadWarning('Backend non disponibile al momento: mostro annunci demo');
-      setAnnouncements(FALLBACK_ANNOUNCEMENTS);
+      if (isDemoFallbackEnabled()) {
+        setLoadWarning('Backend non disponibile al momento: mostro annunci demo');
+        setAnnouncements(FALLBACK_ANNOUNCEMENTS);
+      } else {
+        setLoadWarning('Backend non disponibile al momento');
+        setAnnouncements([]);
+      }
     } finally {
       setLoading(false);
     }

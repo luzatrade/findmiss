@@ -6,6 +6,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 require('dotenv').config();
 const { resolveDatabaseUrl } = require('./config/resolveDatabaseUrl');
+const { isAutoSeedEnabled } = require('./config/demoMode');
 
 resolveDatabaseUrl();
 
@@ -59,13 +60,15 @@ async function initializeDatabase() {
       try {
         const announcementCount = await prisma.announcement.count();
 
-        if (announcementCount === 0) {
-          console.log('🌱 Database vuoto, eseguo seed...');
+        if (announcementCount === 0 && isAutoSeedEnabled()) {
+          console.log('🌱 Database vuoto, eseguo seed (RUN_SEED=true)...');
           execSync('node prisma/seed.js', {
             stdio: 'inherit',
             cwd: projectRoot
           });
           console.log('✅ Database popolato!');
+        } else if (announcementCount === 0) {
+          console.log('✅ Database vuoto (seed automatico disabilitato in produzione)');
         } else {
           console.log(`✅ Database già popolato (${announcementCount} annunci)`);
         }

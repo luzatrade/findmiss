@@ -13,6 +13,7 @@ import { LogoLight } from './components/Logo'
 import OptimizedImage from '../components/OptimizedImage'
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../lib/runtime-api'
 import { FALLBACK_ANNOUNCEMENTS } from '../lib/fallback-announcements'
+import { isDemoFallbackEnabled } from '../lib/demoMode'
 import { MEDIA_SIZES } from '../lib/media'
 
 // Nuove categorie
@@ -86,13 +87,20 @@ export default function HomePage() {
             services: a.services ? (typeof a.services === 'string' ? JSON.parse(a.services) : a.services) : null
           }))
           setAnnouncements(transformed)
-        } else {
+        } else if (isDemoFallbackEnabled()) {
           setAnnouncements(FALLBACK_ANNOUNCEMENTS)
+        } else {
+          setAnnouncements([])
         }
       } catch (err) {
         console.error('Errore fetch:', err)
-        setLoadError('Backend non disponibile al momento: mostro annunci demo')
-        setAnnouncements(FALLBACK_ANNOUNCEMENTS)
+        if (isDemoFallbackEnabled()) {
+          setLoadError('Backend non disponibile al momento: mostro annunci demo')
+          setAnnouncements(FALLBACK_ANNOUNCEMENTS)
+        } else {
+          setLoadError('Backend non disponibile al momento')
+          setAnnouncements([])
+        }
       } finally {
         setIsLoading(false)
       }

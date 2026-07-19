@@ -8,7 +8,7 @@ import {
   ChevronRight, X, Loader2, AlertCircle
 } from 'lucide-react'
 
-import { getApiUrl } from '../../../lib/runtime-api'
+import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../lib/runtime-api'
 import { shareAnnouncement } from '../../../lib/share'
 
 const API_URL = getApiUrl()
@@ -51,7 +51,7 @@ export default function AnnouncementDetailClient({ id }) {
           views: a.views_count || 0,
           description: a.description || 'Nessuna descrizione disponibile.',
           images: a.media?.length > 0 
-            ? a.media.map(m => m.url || m.thumbnail_url)
+            ? a.media.map(m => toAbsoluteMediaUrl(m.url || m.thumbnail_url, getApiOrigin()))
             : ['https://via.placeholder.com/600x800?text=No+Image'],
           features: {
             height: a.height ? `${a.height} cm` : null,

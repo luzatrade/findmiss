@@ -7,9 +7,28 @@ import {
   Plus, GripVertical, X
 } from 'lucide-react'
 
-import { getApiUrl } from '../../../../lib/runtime-api'
+import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../../lib/runtime-api'
 
 const API_URL = getApiUrl()
+
+async function uploadAnnouncementMedia(token, announcementId, files) {
+  const uploadFormData = new FormData()
+  files.forEach((file) => uploadFormData.append('files', file))
+  uploadFormData.append('announcement_id', announcementId)
+
+  const uploadRes = await fetch(`${API_URL}/upload/media`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: uploadFormData,
+  })
+
+  const uploadData = await uploadRes.json()
+  if (!uploadRes.ok || !uploadData.success) {
+    throw new Error(uploadData.error || 'Errore nel caricamento foto/video')
+  }
+
+  return uploadData.data
+}
 
 export default function EditAnnouncementPage({ params }) {
   const announcementId = params.id
@@ -168,28 +187,17 @@ export default function EditAnnouncementPage({ params }) {
       const data = await res.json()
       
       if (data.success) {
-        // Upload nuove foto se presenti
         if (newPhotos.length > 0) {
-          const uploadFormData = new FormData()
-          newPhotos.forEach(photo => {
-            uploadFormData.append('files', photo)
-          })
-          uploadFormData.append('announcement_id', announcementId)
-          
-          await fetch(`${API_URL}/upload/media`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: uploadFormData
-          })
+          await uploadAnnouncementMedia(token, announcementId, newPhotos)
         }
-        
+
         router.push('/my-announcements?updated=true')
       } else {
         setError(data.error || 'Errore nel salvataggio')
       }
     } catch (err) {
       console.error('Errore:', err)
-      setError('Errore di rete')
+      setError(err.message || 'Errore di rete')
     } finally {
       setSaving(false)
     }
@@ -256,7 +264,7 @@ export default function EditAnnouncementPage({ params }) {
             {existingMedia.map((media, index) => (
               <div key={media.id} className="relative group aspect-[3/4]">
                 <img
-                  src={media.url || media.thumbnail_url}
+                  src={toAbsoluteMediaUrl(media.url || media.thumbnail_url, getApiOrigin())}
                   alt=""
                   className="w-full h-full object-cover rounded-xl border border-gray-200"
                 />

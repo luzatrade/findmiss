@@ -7,7 +7,7 @@ import {
   Loader2, Search, X, Grid, List
 } from 'lucide-react'
 
-import { getApiUrl } from '../../lib/runtime-api'
+import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api'
 
 const API_URL = getApiUrl()
 
@@ -53,7 +53,11 @@ export default function SavedPage() {
           price: a.price_1hour ? Number(a.price_1hour) : 0,
           verified: a.is_verified || false,
           vip: a.is_vip || false,
-          image: a.media?.[0]?.url || 'https://via.placeholder.com/300x400?text=No+Image',
+          image: toAbsoluteMediaUrl(
+            a.media?.[0]?.url || a.media?.[0]?.thumbnail_url,
+            getApiOrigin(),
+            'https://via.placeholder.com/300x400?text=No+Image'
+          ),
           category: a.category?.slug || 'miss',
         }))
         setAnnouncements(favAnnouncements)

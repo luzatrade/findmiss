@@ -8,7 +8,7 @@ import {
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-import { getApiUrl } from '../../lib/runtime-api'
+import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api'
 
 const API_URL = getApiUrl()
 
@@ -93,10 +93,24 @@ export default function ReelsPage() {
 
   const loadReels = async () => {
     try {
+      const apiOrigin = getApiOrigin()
       const res = await fetch(`${API_URL}/reels?limit=50`)
       const data = await res.json()
       if (data.success) {
-        setReels(data.data || [])
+        const normalized = (data.data || []).map((reel) => {
+          const video = reel.video || reel.media?.[0] || null
+          const media = video
+            ? [{
+                ...video,
+                url: toAbsoluteMediaUrl(video.url, apiOrigin),
+                thumbnail_url: video.thumbnail_url
+                  ? toAbsoluteMediaUrl(video.thumbnail_url, apiOrigin)
+                  : null,
+              }]
+            : []
+          return { ...reel, media, video: media[0] || null }
+        })
+        setReels(normalized)
       }
     } catch (error) {
       console.error('Errore:', error)
@@ -346,15 +360,18 @@ export default function ReelsPage() {
         formData.append('announcement_id', announcementData.data.id)
         formData.append('is_reel', 'true')
 
-        await fetch(`${API_URL}/upload/media`, {
+        const uploadRes = await fetch(`${API_URL}/upload/media`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
           },
           body: formData
         })
+        const uploadResult = await uploadRes.json()
+        if (!uploadRes.ok || !uploadResult.success) {
+          throw new Error(uploadResult.error || 'Errore upload video')
+        }
 
-        // Success!
         setShowUploadModal(false)
         setUploadData({
           video: null,
@@ -372,7 +389,7 @@ export default function ReelsPage() {
       }
     } catch (error) {
       console.error('Errore upload:', error)
-      setUploadError('Errore di rete, riprova')
+      setUploadError(error.message || 'Errore di rete, riprova')
     } finally {
       setIsUploading(false)
     }

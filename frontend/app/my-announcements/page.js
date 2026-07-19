@@ -8,7 +8,7 @@ import {
   TrendingUp, Calendar, Settings, Pause, Play, Loader2
 } from 'lucide-react'
 
-import { getApiUrl } from '../../lib/runtime-api'
+import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api'
 
 const API_URL = getApiUrl()
 
@@ -245,7 +245,11 @@ export default function MyAnnouncementsPage() {
                   {/* Image */}
                   <div className="sm:w-48 h-48 sm:h-auto relative bg-gray-100">
                     <img
-                      src={announcement.media?.[0]?.url || 'https://via.placeholder.com/200x200?text=No+Image'}
+                      src={toAbsoluteMediaUrl(
+                        announcement.media?.[0]?.url || announcement.media?.[0]?.thumbnail_url,
+                        getApiOrigin(),
+                        'https://via.placeholder.com/200x200?text=No+Image'
+                      )}
                       alt={announcement.title}
                       className="w-full h-full object-cover"
                     />

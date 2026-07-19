@@ -2,10 +2,12 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
 const { compressImage } = require('../services/imageCompression');
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
 // Configura storage
 const storage = multer.diskStorage({
@@ -57,13 +59,8 @@ const handleSingleUpload = async (req, res) => {
     const file = req.file;
     const isVideo = file.mimetype.startsWith('video');
     const type = isVideo ? 'videos' : 'images';
-    
-    // URL relativo per accesso
     const fileUrl = `/uploads/${type}/${file.filename}`;
-    
-    let thumbnailUrl = null;
-    
-    // Per le immagini, comprimi se necessario
+
     if (!isVideo && compressImage) {
       try {
         await compressImage(file.path);
@@ -76,7 +73,7 @@ const handleSingleUpload = async (req, res) => {
       success: true,
       data: {
         url: fileUrl,
-        thumbnail_url: thumbnailUrl,
+        thumbnail_url: null,
         type: isVideo ? 'video' : 'image',
         filename: file.filename,
         size: file.size,
@@ -89,11 +86,115 @@ const handleSingleUpload = async (req, res) => {
   }
 };
 
+async function buildUploadedFileRecord(file, index, basePosition, hasPrimary, isReel) {
+  const isVideo = file.mimetype.startsWith('video');
+  const typeFolder = isVideo ? 'videos' : 'images';
+  const fileUrl = `/uploads/${typeFolder}/${file.filename}`;
+
+  if (!isVideo && compressImage) {
+    try {
+      await compressImage(file.path);
+    } catch (err) {
+      console.warn('Compressione immagine fallita:', err.message);
+    }
+  }
+
+  return {
+    type: isVideo ? 'video' : 'image',
+    url: fileUrl,
+    position: basePosition + index,
+    is_primary: !hasPrimary && index === 0 && !isVideo,
+    is_reel: Boolean(isReel && isVideo),
+    isVideo,
+  };
+}
+
+async function persistAnnouncementMedia(req, res) {
+  try {
+    const files = req.files?.length ? req.files : req.file ? [req.file] : [];
+    if (files.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nessun file caricato' });
+    }
+
+    const { announcement_id, is_reel } = req.body;
+    if (!announcement_id) {
+      return res.status(400).json({ success: false, error: 'announcement_id richiesto' });
+    }
+
+    const announcement = await prisma.announcement.findUnique({
+      where: { id: announcement_id },
+      include: {
+        media: {
+          select: { id: true, is_primary: true, position: true },
+          orderBy: { position: 'asc' },
+        },
+      },
+    });
+
+    if (!announcement) {
+      return res.status(404).json({ success: false, error: 'Annuncio non trovato' });
+    }
+
+    if (announcement.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Non autorizzato' });
+    }
+
+    const basePosition = announcement.media.length;
+    let hasPrimary = announcement.media.some((item) => item.is_primary);
+    let hasVideo = announcement.has_video;
+    const reelUpload = is_reel === 'true' || is_reel === true;
+    const createdMedia = [];
+
+    for (let index = 0; index < files.length; index += 1) {
+      const prepared = await buildUploadedFileRecord(
+        files[index],
+        index,
+        basePosition,
+        hasPrimary,
+        reelUpload
+      );
+
+      if (prepared.isVideo) {
+        hasVideo = true;
+      }
+      if (prepared.is_primary) {
+        hasPrimary = true;
+      }
+
+      const record = await prisma.media.create({
+        data: {
+          announcement_id,
+          type: prepared.type,
+          url: prepared.url,
+          position: prepared.position,
+          is_primary: prepared.is_primary,
+          is_reel: prepared.is_reel,
+        },
+      });
+
+      createdMedia.push(record);
+    }
+
+    await prisma.announcement.update({
+      where: { id: announcement_id },
+      data: { has_video: hasVideo },
+    });
+
+    return res.json({ success: true, data: createdMedia });
+  } catch (error) {
+    console.error('Errore upload media annuncio:', error);
+    return res.status(500).json({ success: false, error: 'Errore upload media' });
+  }
+}
+
 // POST /api/upload - Upload singolo file
 router.post('/', authenticate, upload.single('file'), handleSingleUpload);
 
-// Compatibilità retroattiva per endpoint storico usato dal frontend
-router.post('/media', authenticate, upload.single('file'), handleSingleUpload);
+// Upload media collegati a un annuncio (foto/video profilo, reel, ecc.)
+router.post('/media', authenticate, upload.array('files', 10), persistAnnouncementMedia);
+
+// Compatibilità: singolo file con campo "file" ma collegato all'annuncio
+router.post('/media/single', authenticate, upload.single('file'), persistAnnouncementMedia);
 
 // POST /api/upload/multiple - Upload multiplo
 router.post('/multiple', authenticate, upload.array('files', 10), async (req, res) => {

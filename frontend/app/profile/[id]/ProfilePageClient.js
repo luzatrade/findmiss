@@ -4,7 +4,7 @@ import { ArrowLeft, Heart, MessageCircle, MoreHorizontal, MapPin, Calendar, Cloc
 import { useRouter } from 'next/navigation'
 import Map from '../../../components/Map'
 
-import { getApiUrl } from '../../../lib/runtime-api'
+import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../lib/runtime-api'
 import { shareProfile } from '../../../lib/share'
 
 const API_URL = getApiUrl()
@@ -53,9 +53,9 @@ const ProfilePageClient = ({ id }) => {
               ? new Date(a.user.last_login).toLocaleString('it-IT', { hour: '2-digit', minute: '2-digit' })
               : 'N/D',
             online: false,
-            coverImage: a.media?.[0]?.url || 'https://via.placeholder.com/1200x400?text=No+Cover',
+            coverImage: toAbsoluteMediaUrl(a.media?.[0]?.url, getApiOrigin(), 'https://via.placeholder.com/1200x400?text=No+Cover'),
             images: a.media?.length > 0 
-              ? a.media.map(m => m.url || m.thumbnail_url)
+              ? a.media.map(m => toAbsoluteMediaUrl(m.url || m.thumbnail_url, getApiOrigin()))
               : ['https://via.placeholder.com/600x800?text=No+Image'],
             services: [
               a.price_30min && { name: 'Incontro 30 min', price: Number(a.price_30min), duration: '30min' },

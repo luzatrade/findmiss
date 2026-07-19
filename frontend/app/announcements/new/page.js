@@ -12,6 +12,28 @@ import { getApiUrl } from '../../../lib/runtime-api'
 
 const API_URL = getApiUrl()
 
+async function uploadAnnouncementMedia(token, announcementId, files, options = {}) {
+  const uploadFormData = new FormData()
+  files.forEach((file) => uploadFormData.append('files', file))
+  uploadFormData.append('announcement_id', announcementId)
+  if (options.isReel) {
+    uploadFormData.append('is_reel', 'true')
+  }
+
+  const uploadRes = await fetch(`${API_URL}/upload/media`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: uploadFormData,
+  })
+
+  const uploadData = await uploadRes.json()
+  if (!uploadRes.ok || !uploadData.success) {
+    throw new Error(uploadData.error || 'Errore nel caricamento foto/video')
+  }
+
+  return uploadData.data
+}
+
 // Categorie disponibili
 const CATEGORIES = [
   { id: 'miss', name: 'Miss', icon: Heart, description: 'Donna' },
@@ -244,30 +266,17 @@ export default function NewAnnouncementPage() {
       const data = await res.json()
 
       if (data.success && data.data?.id) {
-        // Upload foto se presenti
         if (photos.length > 0) {
-          const uploadFormData = new FormData()
-          photos.forEach((photo, index) => {
-            uploadFormData.append('files', photo)
-          })
-          uploadFormData.append('announcement_id', data.data.id)
-          
-          await fetch(`${API_URL}/upload/media`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            body: uploadFormData
-          })
+          await uploadAnnouncementMedia(token, data.data.id, photos)
         }
-        
+
         router.push('/my-announcements?created=true')
       } else {
         setErrors({ submit: data.error || 'Errore nella creazione' })
       }
     } catch (err) {
       console.error('Errore:', err)
-      setErrors({ submit: 'Errore di rete, riprova' })
+      setErrors({ submit: err.message || 'Errore di rete, riprova' })
     } finally {
       setIsSubmitting(false)
     }
@@ -678,7 +687,7 @@ export default function NewAnnouncementPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-900">Foto profilo</h3>
-                  <p className="text-sm text-gray-500">{photos.length}/10 foto caricate</p>
+                  <p className="text-sm text-gray-500">{photos.length}/10 foto selezionate</p>
                 </div>
                 {errors.photos && (
                   <span className="text-xs text-red-500 flex items-center gap-1">

@@ -7,6 +7,7 @@ const { execSync } = require('child_process');
 require('dotenv').config();
 const { resolveDatabaseUrl } = require('./config/resolveDatabaseUrl');
 const { isAutoSeedEnabled } = require('./config/demoMode');
+const { ensureItalianCities } = require('./data/italianCities');
 
 resolveDatabaseUrl();
 
@@ -58,6 +59,11 @@ async function initializeDatabase() {
 
     if (schemaReady) {
       try {
+        const citySeed = await ensureItalianCities(prisma);
+        if (citySeed.created > 0 || citySeed.updated > 0) {
+          console.log(`🏙️ Catalogo città sincronizzato (${citySeed.total} totali, +${citySeed.created} nuove)`);
+        }
+
         const announcementCount = await prisma.announcement.count();
 
         if (announcementCount === 0 && isAutoSeedEnabled()) {

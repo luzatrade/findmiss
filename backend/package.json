@@ -17,6 +17,7 @@
     "prisma:seed-completo": "node prisma/seed-completo.js",
     "create-admin": "node create-admin.js",
     "reset-content": "node scripts/reset-content.js",
+    "seed-cities": "node scripts/seed-cities.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

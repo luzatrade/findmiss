@@ -1,4 +1,5 @@
 import { getApiUrl, toAbsoluteMediaUrl } from './runtime-api'
+import { getItalianCities, getItalianCityBySlug } from './italianCities'
 
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.findmiss.it').replace(/\/$/, '')
 export const SITE_NAME = 'Find Miss'
@@ -33,14 +34,17 @@ export function buildMetadata({
   image,
   noIndex = false,
   type = 'website',
+  keywords = [],
 }) {
   const canonical = absoluteUrl(path)
   const ogImage = image ? toAbsoluteMediaUrl(image, undefined, DEFAULT_OG_IMAGE) : DEFAULT_OG_IMAGE
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME
+  const pageTitle = title || SITE_NAME
+  const fullTitle = pageTitle === SITE_NAME ? SITE_NAME : `${pageTitle} | ${SITE_NAME}`
 
   return {
-    title: title || SITE_NAME,
+    title: pageTitle === SITE_NAME ? { absolute: SITE_NAME } : pageTitle,
     description: truncate(description),
+    keywords: keywords.length > 0 ? keywords : undefined,
     alternates: { canonical },
     openGraph: {
       title: fullTitle,
@@ -49,7 +53,7 @@ export function buildMetadata({
       siteName: SITE_NAME,
       locale: 'it_IT',
       type,
-      images: [{ url: ogImage, width: 1200, height: 630, alt: title || SITE_NAME }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: pageTitle }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -59,7 +63,57 @@ export function buildMetadata({
     },
     robots: noIndex
       ? { index: false, follow: false, googleBot: { index: false, follow: false } }
-      : { index: true, follow: true },
+      : { index: true, follow: true, googleBot: { index: true, follow: true } },
+  }
+}
+
+export async function fetchCitiesForSeo(limit = 200) {
+  try {
+    const res = await fetch(`${getApiUrl()}/cities?limit=${limit}`, {
+      next: { revalidate: 86400 },
+    })
+    if (!res.ok) return getItalianCities({ limit })
+    const data = await res.json()
+    if (!data?.success || !Array.isArray(data.data) || data.data.length === 0) {
+      return getItalianCities({ limit })
+    }
+    return data.data
+  } catch {
+    return getItalianCities({ limit })
+  }
+}
+
+export async function fetchCityForSeo(slug) {
+  try {
+    const res = await fetch(`${getApiUrl()}/cities/${encodeURIComponent(slug)}`, {
+      next: { revalidate: 3600 },
+    })
+    if (!res.ok) return getItalianCityBySlug(slug)
+    const data = await res.json()
+    if (!data?.success || !data?.data) return getItalianCityBySlug(slug)
+    return data.data
+  } catch {
+    return getItalianCityBySlug(slug)
+  }
+}
+
+export function citySeoFields(city) {
+  const name = city.name || city.slug
+  const slug = city.slug || String(name).toLowerCase()
+  return {
+    name,
+    slug,
+    title: `Annunci a ${name}`,
+    description: `Scopri annunci e profili a ${name}${city.region ? ` (${city.region})` : ''} su Find Miss. Filtra per categoria, prezzo e disponibilità in tempo reale.`,
+    path: `/citta/${slug}`,
+    keywords: [
+      `annunci ${name}`,
+      `incontri ${name}`,
+      `profili ${name}`,
+      `miss ${name}`,
+      city.region || 'Italia',
+      'Find Miss',
+    ],
   }
 }
 
@@ -111,17 +165,68 @@ export function announcementSeoFields(announcement) {
 export function listingJsonLd(announcement, fields) {
   return {
     '@context': 'https://schema.org',
-    '@type': 'Person',
-    name: fields.name,
+    '@type': 'ProfilePage',
+    name: fields.title,
     description: fields.description,
     url: absoluteUrl(fields.path),
-    ...(fields.image ? { image: toAbsoluteMediaUrl(fields.image) } : {}),
-    ...(fields.city
+    mainEntity: {
+      '@type': 'Person',
+      name: fields.name,
+      ...(fields.image ? { image: toAbsoluteMediaUrl(fields.image) } : {}),
+      ...(fields.city
+        ? {
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: fields.city,
+              addressCountry: 'IT',
+            },
+          }
+        : {}),
+    },
+  }
+}
+
+export function breadcrumbJsonLd(items) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: absoluteUrl(item.path),
+    })),
+  }
+}
+
+export function organizationJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: SITE_NAME,
+    url: SITE_URL,
+    logo: DEFAULT_OG_IMAGE,
+    description: DEFAULT_DESCRIPTION,
+  }
+}
+
+export function cityListingJsonLd(cityName, slug, announcementUrls = []) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `Annunci a ${cityName}`,
+    description: `Elenco annunci e profili disponibili a ${cityName} su Find Miss.`,
+    url: absoluteUrl(`/citta/${slug}`),
+    inLanguage: 'it-IT',
+    ...(announcementUrls.length > 0
       ? {
-          address: {
-            '@type': 'PostalAddress',
-            addressLocality: fields.city,
-            addressCountry: 'IT',
+          mainEntity: {
+            '@type': 'ItemList',
+            itemListElement: announcementUrls.slice(0, 20).map((url, index) => ({
+              '@type': 'ListItem',
+              position: index + 1,
+              url: absoluteUrl(url),
+            })),
           },
         }
       : {}),

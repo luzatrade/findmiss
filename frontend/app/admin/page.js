@@ -10,7 +10,7 @@ import {
   Radio, Film, Image, DollarSign
 } from 'lucide-react'
 
-import { getApiUrl, getApiOrigin, getWsUrl } from '../../lib/runtime-api'
+import { getApiUrl, getApiOrigin, getWsUrl, toAbsoluteMediaUrl } from '../../lib/runtime-api'
 
 const API_URL = getApiUrl()
 const API_ORIGIN = getApiOrigin()
@@ -24,6 +24,7 @@ export default function AdminPage() {
   const [announcements, setAnnouncements] = useState([])
   const [users, setUsers] = useState([])
   const [user, setUser] = useState(null)
+  const [announcementFilter, setAnnouncementFilter] = useState('all')
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -53,35 +54,56 @@ export default function AdminPage() {
     setLoading(true)
     try {
       const token = localStorage.getItem('token')
-      
-      // Carica statistiche
-      const [announcementsRes, categoriesRes, citiesRes] = await Promise.all([
-        fetch(`${API_URL}/announcements`),
+      if (!token) {
+        router.push('/auth?redirect=/admin')
+        return
+      }
+
+      const authHeaders = { Authorization: `Bearer ${token}` }
+
+      const [statsRes, announcementsRes, categoriesRes, citiesRes] = await Promise.all([
+        fetch(`${API_URL}/admin/stats`, { headers: authHeaders }),
+        fetch(`${API_URL}/admin/announcements?limit=200`, { headers: authHeaders }),
         fetch(`${API_URL}/categories`),
-        fetch(`${API_URL}/cities?limit=100`)
+        fetch(`${API_URL}/cities?limit=100`),
       ])
-      
-      const announcementsData = await announcementsRes.json()
+
+      if (statsRes.status === 401 || announcementsRes.status === 401) {
+        router.push('/auth?redirect=/admin')
+        return
+      }
+
+      const statsData = statsRes.ok ? await statsRes.json() : { data: {} }
+      const announcementsData = announcementsRes.ok ? await announcementsRes.json() : { data: [] }
       const categoriesData = await categoriesRes.json()
       const citiesData = await citiesRes.json()
-      
+
       const anns = announcementsData.data || []
       setAnnouncements(anns)
-      
-      // Calcola statistiche
+
+      const adminStats = statsData.data || {}
+      const pendingCount =
+        adminStats.pendingAnnouncements ?? anns.filter((a) => a.status === 'pending').length
+      if (pendingCount > 0) {
+        setActiveTab('announcements')
+        setAnnouncementFilter('pending')
+      }
+
       setStats({
-        totalAnnouncements: anns.length,
-        activeAnnouncements: anns.filter(a => a.status === 'active').length,
-        pendingAnnouncements: anns.filter(a => a.status === 'pending').length,
+        totalAnnouncements: adminStats.totalAnnouncements ?? anns.length,
+        activeAnnouncements:
+          adminStats.activeAnnouncements ?? anns.filter((a) => a.status === 'active').length,
+        pendingAnnouncements: pendingCount,
+        totalUsers: adminStats.totalUsers ?? 0,
+        totalRevenue: adminStats.totalRevenue ?? 0,
         totalViews: anns.reduce((sum, a) => sum + (a.views_count || 0), 0),
         totalLikes: anns.reduce((sum, a) => sum + (a.likes_count || 0), 0),
         totalContacts: anns.reduce((sum, a) => sum + (a.contacts_count || 0), 0),
         categories: categoriesData.data?.length || 0,
         cities: citiesData.data?.length || 0,
-        vipAnnouncements: anns.filter(a => a.is_vip).length,
-        verifiedAnnouncements: anns.filter(a => a.is_verified).length,
+        vipAnnouncements: anns.filter((a) => a.is_vip).length,
+        verifiedAnnouncements: anns.filter((a) => a.is_verified).length,
       })
-      
     } catch (error) {
       console.error('Errore:', error)
     } finally {
@@ -92,14 +114,19 @@ export default function AdminPage() {
   const updateAnnouncementStatus = async (id, status) => {
     try {
       const token = localStorage.getItem('token')
-      await fetch(`${API_URL}/announcements/${id}/status`, {
+      const res = await fetch(`${API_URL}/admin/announcements/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status }),
       })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        console.error('Approvazione fallita:', data.error)
+        return
+      }
       loadData()
     } catch (error) {
       console.error('Errore:', error)
@@ -304,8 +331,28 @@ export default function AdminPage() {
         {/* Announcements Tab */}
         {activeTab === 'announcements' && (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="font-semibold text-gray-900">Gestione Annunci ({announcements.length})</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                {[
+                  { id: 'all', label: 'Tutti' },
+                  { id: 'pending', label: 'In attesa' },
+                  { id: 'active', label: 'Attivi' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setAnnouncementFilter(f.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                      announcementFilter === f.id
+                        ? 'bg-pink-500 text-white'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -331,13 +378,24 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {announcements.map(ann => (
+                  {announcements
+                    .filter((ann) =>
+                      announcementFilter === 'all' ? true : ann.status === announcementFilter
+                    )
+                    .map(ann => (
                     <tr key={ann.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden">
                             {ann.media?.[0]?.url ? (
-                              <img src={ann.media[0].url} alt="" className="w-full h-full object-cover" />
+                              <img
+                                src={toAbsoluteMediaUrl(
+                                  ann.media[0].thumbnail_url || ann.media[0].url,
+                                  API_ORIGIN
+                                )}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-gray-400">
                                 <Image size={16} />

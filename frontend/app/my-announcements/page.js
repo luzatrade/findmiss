@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { 
   ArrowLeft, Plus, Edit, Trash2, Eye, Heart, MessageCircle, 
@@ -16,6 +16,8 @@ const API_URL = getApiUrl()
 
 export default function MyAnnouncementsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const showPendingNotice = searchParams.get('pending') === '1'
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -193,6 +195,12 @@ export default function MyAnnouncementsPage() {
       </header>
 
       <div className="max-w-6xl mx-auto p-4 space-y-6">
+        {showPendingNotice && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 text-sm">
+            Annuncio inviato. Resta in <strong>attesa di approvazione</strong> admin: comparirà in
+            homepage dopo l&apos;approvazione da Admin Panel.
+          </div>
+        )}
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">

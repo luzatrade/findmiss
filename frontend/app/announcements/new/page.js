@@ -279,7 +279,7 @@ export default function NewAnnouncementPage() {
           await uploadAnnouncementMedia(token, data.data.id, photos)
         }
 
-        router.push('/my-announcements?created=true')
+        router.push('/my-announcements?created=true&pending=1')
       } else {
         setErrors({ submit: data.error || 'Errore nella creazione' })
       }

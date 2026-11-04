@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, SlidersHorizontal } from 'lucide-react'
+import { fetchCities } from '../lib/fetchCities'
 
 export default function AdvancedFilters({ isOpen, onClose, onApply }) {
   const [filters, setFilters] = useState({
@@ -39,6 +40,28 @@ export default function AdvancedFilters({ isOpen, onClose, onApply }) {
     onApply(filters)
     onClose()
   }
+
+  const [cityOptions, setCityOptions] = useState([])
+  const [citiesLoading, setCitiesLoading] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    let cancelled = false
+    setCitiesLoading(true)
+    fetchCities({ limit: 100 })
+      .then((list) => {
+        if (!cancelled) setCityOptions(list)
+      })
+      .catch(() => {
+        if (!cancelled) setCityOptions([])
+      })
+      .finally(() => {
+        if (!cancelled) setCitiesLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen])
 
   const handleReset = () => {
     setFilters({
@@ -103,19 +126,16 @@ export default function AdvancedFilters({ isOpen, onClose, onApply }) {
             <select
               value={filters.city}
               onChange={(e) => setFilters({...filters, city: e.target.value})}
-              className="w-full bg-gray-900 text-white p-4 rounded-xl border border-gray-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-900 outline-none"
+              disabled={citiesLoading}
+              className="w-full bg-gray-900 text-white p-4 rounded-xl border border-gray-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-900 outline-none disabled:opacity-60"
             >
-              <option value="">Tutte le città</option>
-              <option value="Roma">Roma</option>
-              <option value="Milano">Milano</option>
-              <option value="Napoli">Napoli</option>
-              <option value="Torino">Torino</option>
-              <option value="Firenze">Firenze</option>
-              <option value="Bologna">Bologna</option>
-              <option value="Venezia">Venezia</option>
-              <option value="Palermo">Palermo</option>
-              <option value="Bari">Bari</option>
-              <option value="Catania">Catania</option>
+              <option value="">{citiesLoading ? 'Caricamento città...' : 'Tutte le città'}</option>
+              {cityOptions.map((city) => (
+                <option key={city.id || city.slug} value={city.name}>
+                  {city.name}
+                  {city.region ? ` (${city.region})` : ''}
+                </option>
+              ))}
             </select>
           </div>
         </div>

@@ -430,6 +430,35 @@ router.get('/announcements', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// PUT /api/admin/announcements/:id/status - Approva / sospendi / rifiuta
+router.put('/announcements/:id/status', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const validStatuses = ['active', 'pending', 'paused', 'suspended', 'expired'];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, error: 'Stato non valido' });
+    }
+
+    const announcement = await prisma.announcement.update({
+      where: { id },
+      data: { status },
+      include: {
+        user: { select: { id: true, email: true, nickname: true } },
+        city: { select: { name: true } },
+        category: { select: { name: true } },
+        media: { take: 1 },
+      },
+    });
+
+    res.json({ success: true, data: announcement });
+  } catch (error) {
+    console.error('Errore aggiornamento stato annuncio admin:', error);
+    res.status(500).json({ success: false, error: 'Errore server' });
+  }
+});
+
 // PUT /api/admin/announcements/:id/verify - Verifica annuncio
 router.put('/announcements/:id/verify', authenticate, requireAdmin, async (req, res) => {
   try {

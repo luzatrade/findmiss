@@ -114,7 +114,13 @@ export default function CreateStoryPage() {
       
       // Upload media
       const formData = new FormData()
-      formData.append('file', mediaFile)
+      const uploadName =
+        mediaFile instanceof File && mediaFile.name
+          ? mediaFile.name
+          : mediaType === 'video'
+            ? 'story.mp4'
+            : 'story.jpg'
+      formData.append('file', mediaFile, uploadName)
       formData.append('type', 'story')
       
       const uploadRes = await fetch(`${API_URL}/upload`, {

@@ -46,6 +46,10 @@ export function validateMediaFile(file, { maxImageMb = 12, maxVideoMb = 80 } = {
   const isVideo = file.type.startsWith('video/')
   const isImage = file.type.startsWith('image/')
   if (!isVideo && !isImage) {
+    const name = (file.name || '').toLowerCase()
+    if (/\.heic$|\.heif$/.test(name)) {
+      return 'HEIC non supportato dal browser. Su iPhone: Impostazioni → Fotocamera → Formati → Più compatibile (JPG).'
+    }
     return 'Formato non supportato. Usa JPG, PNG, WebP o MP4.'
   }
 

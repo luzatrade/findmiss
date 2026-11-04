@@ -7,10 +7,8 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
 COPY prisma ./prisma/
-RUN npx prisma generate
+RUN npm ci --omit=dev
 
 COPY . .
 

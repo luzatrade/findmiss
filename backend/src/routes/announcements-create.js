@@ -75,7 +75,8 @@ router.post('/', authenticate, async (req, res) => {
         available_for: available_for ? JSON.stringify(available_for) : null,
         services: services ? JSON.stringify(services) : null,
         phone_visible: phone_visible !== undefined ? phone_visible : true,
-        status: 'pending' // Richiede approvazione admin
+        status:
+          process.env.ANNOUNCEMENTS_AUTO_APPROVE === 'true' ? 'active' : 'pending',
       },
       include: {
         category: true,

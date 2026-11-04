@@ -186,17 +186,16 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Avvia server dopo inizializzazione database
+// Avvia subito il server (health check Railway), init DB in background
 async function startServer() {
-  // Inizializza database prima di avviare il server
-  await initializeDatabase();
-  
-  // Start server con WebSocket
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server avviato su http://localhost:${PORT}`);
+    console.log(`🚀 Server avviato su http://0.0.0.0:${PORT}`);
     console.log(`🔌 WebSocket attivo`);
     console.log(`📁 Upload path: /uploads`);
-    console.log(`🌐 Server accessibile su rete locale`);
+  });
+
+  initializeDatabase().catch((error) => {
+    console.error('⚠️ Inizializzazione database in background fallita:', error.message);
   });
 }
 

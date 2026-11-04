@@ -1,0 +1,42 @@
+# Ridistribuisce il backend e imposta Root Directory = backend
+#
+# GitHub → luzatrade/findmiss → Settings → Secrets and variables → Actions:
+#   RAILWAY_TOKEN          token da railway.app (Project Settings consigliato)
+#   RAILWAY_PROJECT_ID     Project → Settings → Project ID
+#   RAILWAY_SERVICE_NAME   nome del servizio API (es. backend o findmiss-api)
+#
+# Poi: Actions → "Railway backend deploy" → Run workflow
+
+name: Railway backend deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@4.11.0
+
+      - name: Fix root directory and deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          SERVICE_NAME: ${{ secrets.RAILWAY_SERVICE_NAME }}
+        run: |
+          set -euo pipefail
+          test -n "$RAILWAY_TOKEN" || { echo "Manca RAILWAY_TOKEN"; exit 1; }
+          test -n "$PROJECT_ID" || { echo "Manca RAILWAY_PROJECT_ID"; exit 1; }
+          SERVICE="${SERVICE_NAME:-backend}"
+          railway environment edit -p "$PROJECT_ID" \
+            --service-config "$SERVICE" source.rootDirectory /backend \
+            -m "Set root directory to /backend (GitHub Actions)"
+          cd backend
+          railway up --detach -p "$PROJECT_ID" -s "$SERVICE"

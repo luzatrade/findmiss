@@ -9,45 +9,84 @@ const { processImage } = require('../services/imageCompression');
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Configura storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const type = file.mimetype.startsWith('video') ? 'videos' : 'images';
-    const uploadPath = path.join(__dirname, '../../uploads', type);
-    
-    // Crea cartella se non esiste
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-  }
-});
+const UPLOADS_ROOT = process.env.UPLOADS_PATH
+  ? path.resolve(process.env.UPLOADS_PATH)
+  : path.join(__dirname, '../../uploads');
 
-// Filtro file
+const allowedImageTypes = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/heic',
+  'image/heif',
+]);
+const allowedVideoTypes = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
+
+function defaultExtension(mimetype, originalname) {
+  const fromName = path.extname(originalname || '');
+  if (fromName) return fromName;
+  if (mimetype === 'image/jpeg' || mimetype === 'image/jpg') return '.jpg';
+  if (mimetype === 'image/png') return '.png';
+  if (mimetype === 'image/webp') return '.webp';
+  if (mimetype === 'image/gif') return '.gif';
+  if (mimetype === 'image/heic' || mimetype === 'image/heif') return '.heic';
+  if (mimetype === 'video/mp4') return '.mp4';
+  if (mimetype === 'video/webm') return '.webm';
+  if (mimetype === 'video/quicktime') return '.mov';
+  return '.bin';
+}
+
+function isAllowedUpload(file) {
+  const mimetype = (file.mimetype || '').toLowerCase();
+  if (allowedImageTypes.has(mimetype) || allowedVideoTypes.has(mimetype)) {
+    return true;
+  }
+  const name = (file.originalname || '').toLowerCase();
+  if (mimetype === 'application/octet-stream' || mimetype === '') {
+    return /\.(jpe?g|png|webp|gif|heic|heif|mp4|webm|mov)$/i.test(name);
+  }
+  return false;
+}
+
+function saveMulterFileToDisk(file) {
+  const mimetype = (file.mimetype || '').toLowerCase();
+  const isVideo = mimetype.startsWith('video') || /\.(mp4|webm|mov)$/i.test(file.originalname || '');
+  const folder = isVideo ? 'videos' : 'images';
+  const uploadPath = path.join(UPLOADS_ROOT, folder);
+  fs.mkdirSync(uploadPath, { recursive: true });
+
+  const ext = defaultExtension(mimetype, file.originalname);
+  const filename = `file-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  const fullPath = path.join(uploadPath, filename);
+
+  if (!file.buffer || !file.buffer.length) {
+    throw new Error('File vuoto o upload interrotto');
+  }
+
+  fs.writeFileSync(fullPath, file.buffer);
+  file.path = fullPath;
+  file.filename = filename;
+  file.mimetype = mimetype || file.mimetype;
+  return file;
+}
+
 const fileFilter = (req, file, cb) => {
-  const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-  const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
-  const allowedTypes = [...allowedImageTypes, ...allowedVideoTypes];
-  
-  if (allowedTypes.includes(file.mimetype)) {
+  if (isAllowedUpload(file)) {
     cb(null, true);
   } else {
-    cb(new Error('Tipo file non supportato'), false);
+    cb(new Error('Tipo file non supportato. Usa JPG, PNG, WebP o MP4.'), false);
   }
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB max
-  }
+    fileSize: 50 * 1024 * 1024,
+    files: 10,
+  },
 });
 
 const handleSingleUpload = async (req, res) => {
@@ -56,7 +95,7 @@ const handleSingleUpload = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Nessun file caricato' });
     }
 
-    const file = req.file;
+    const file = saveMulterFileToDisk(req.file);
     const isVideo = file.mimetype.startsWith('video');
     let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${file.filename}`;
     let thumbnailUrl = null;
@@ -75,12 +114,16 @@ const handleSingleUpload = async (req, res) => {
         type: isVideo ? 'video' : 'image',
         filename: file.filename,
         size: file.size,
-        mimetype: file.mimetype
-      }
+        mimetype: file.mimetype,
+      },
     });
   } catch (error) {
     console.error('Errore upload:', error);
-    res.status(500).json({ success: false, error: 'Errore upload' });
+    const message =
+      error.message?.includes('interrotto') || error.message?.includes('Unexpected end of form')
+        ? 'Upload interrotto. Riprova con JPG/PNG (max 12MB) e connessione stabile.'
+        : 'Errore upload';
+    res.status(500).json({ success: false, error: message });
   }
 };
 
@@ -100,12 +143,13 @@ async function optimizeUploadedImage(file) {
 }
 
 async function buildUploadedFileRecord(file, index, basePosition, hasPrimary, isReel) {
-  const isVideo = file.mimetype.startsWith('video');
-  let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${file.filename}`;
+  const saved = saveMulterFileToDisk(file);
+  const isVideo = saved.mimetype.startsWith('video');
+  let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${saved.filename}`;
   let thumbnailUrl = null;
 
   if (!isVideo) {
-    const optimized = await optimizeUploadedImage(file);
+    const optimized = await optimizeUploadedImage(saved);
     fileUrl = optimized.fileUrl;
     thumbnailUrl = optimized.thumbnailUrl;
   }
@@ -197,65 +241,62 @@ async function persistAnnouncementMedia(req, res) {
     return res.json({ success: true, data: createdMedia });
   } catch (error) {
     console.error('Errore upload media annuncio:', error);
-    return res.status(500).json({ success: false, error: 'Errore upload media' });
+    const message =
+      error.message?.includes('interrotto') || error.message?.includes('Unexpected end of form')
+        ? 'Upload interrotto. Riprova con JPG/PNG (max 12MB).'
+        : 'Errore upload media';
+    return res.status(500).json({ success: false, error: message });
   }
 }
 
-// POST /api/upload - Upload singolo file
 router.post('/', authenticate, upload.single('file'), handleSingleUpload);
-
-// Upload media collegati a un annuncio (foto/video profilo, reel, ecc.)
 router.post('/media', authenticate, upload.array('files', 10), persistAnnouncementMedia);
-
-// Compatibilità: singolo file con campo "file" ma collegato all'annuncio
 router.post('/media/single', authenticate, upload.single('file'), persistAnnouncementMedia);
 
-// POST /api/upload/multiple - Upload multiplo
 router.post('/multiple', authenticate, upload.array('files', 10), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ success: false, error: 'Nessun file caricato' });
     }
 
-    const results = await Promise.all(req.files.map(async (file) => {
-      const isVideo = file.mimetype.startsWith('video');
-      let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${file.filename}`;
-      let thumbnailUrl = null;
+    const results = await Promise.all(
+      req.files.map(async (file) => {
+        const saved = saveMulterFileToDisk(file);
+        const isVideo = saved.mimetype.startsWith('video');
+        let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${saved.filename}`;
+        let thumbnailUrl = null;
 
-      if (!isVideo) {
-        const optimized = await optimizeUploadedImage(file);
-        fileUrl = optimized.fileUrl;
-        thumbnailUrl = optimized.thumbnailUrl;
-      }
+        if (!isVideo) {
+          const optimized = await optimizeUploadedImage(saved);
+          fileUrl = optimized.fileUrl;
+          thumbnailUrl = optimized.thumbnailUrl;
+        }
 
-      return {
-        url: fileUrl,
-        thumbnail_url: thumbnailUrl,
-        type: isVideo ? 'video' : 'image',
-        filename: file.filename,
-        size: file.size,
-        mimetype: file.mimetype
-      };
-    }));
+        return {
+          url: fileUrl,
+          thumbnail_url: thumbnailUrl,
+          type: isVideo ? 'video' : 'image',
+          filename: saved.filename,
+          size: saved.size,
+          mimetype: saved.mimetype,
+        };
+      })
+    );
 
-    res.json({
-      success: true,
-      data: results
-    });
+    res.json({ success: true, data: results });
   } catch (error) {
     console.error('Errore upload multiplo:', error);
     res.status(500).json({ success: false, error: 'Errore upload' });
   }
 });
 
-// DELETE /api/upload/:filename - Elimina file
 router.delete('/:filename', authenticate, async (req, res) => {
   try {
     const { filename } = req.params;
     const { type = 'images' } = req.query;
-    
-    const filePath = path.join(__dirname, '../../uploads', type, filename);
-    
+
+    const filePath = path.join(UPLOADS_ROOT, type, filename);
+
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
       res.json({ success: true });
@@ -268,7 +309,6 @@ router.delete('/:filename', authenticate, async (req, res) => {
   }
 });
 
-// Error handler per multer
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
@@ -276,8 +316,14 @@ router.use((error, req, res, next) => {
     }
     return res.status(400).json({ success: false, error: error.message });
   }
-  if (error.message === 'Tipo file non supportato') {
+  if (error.message === 'Tipo file non supportato. Usa JPG, PNG, WebP o MP4.') {
     return res.status(400).json({ success: false, error: error.message });
+  }
+  if (error.message?.includes('Unexpected end of form')) {
+    return res.status(400).json({
+      success: false,
+      error: 'Upload interrotto. Riprova con JPG/PNG e connessione stabile.',
+    });
   }
   next(error);
 });

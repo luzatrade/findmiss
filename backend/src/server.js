@@ -114,6 +114,11 @@ app.use(cors({
   ],
   credentials: true
 }));
+
+// Upload multipart PRIMA dei body parser JSON (evita "Unexpected end of form" con Express 5)
+const uploadRoutes = require('./routes/upload');
+app.use('/api/upload', uploadRoutes);
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -130,7 +135,6 @@ const chatRoutes = require('./routes/chat');
 const paymentsRoutes = require('./routes/payments');
 const sessionsRoutes = require('./routes/sessions');
 const adminRoutes = require('./routes/admin');
-const uploadRoutes = require('./routes/upload');
 const liveRoutes = require('./routes/live');
 const storiesRoutes = require('./routes/stories');
 const followsRoutes = require('./routes/follows');
@@ -147,7 +151,6 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/upload', uploadRoutes);
 app.use('/api/live', liveRoutes);
 app.use('/api/stories', storiesRoutes);
 app.use('/api/follows', followsRoutes);

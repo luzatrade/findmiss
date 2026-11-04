@@ -25,6 +25,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState([])
   const [user, setUser] = useState(null)
   const [announcementFilter, setAnnouncementFilter] = useState('all')
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -52,6 +53,7 @@ export default function AdminPage() {
 
   const loadData = async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const token = localStorage.getItem('token')
       if (!token) {
@@ -71,6 +73,23 @@ export default function AdminPage() {
       if (statsRes.status === 401 || announcementsRes.status === 401) {
         router.push('/auth?redirect=/admin')
         return
+      }
+
+      if (statsRes.status === 403 || announcementsRes.status === 403) {
+        setLoadError(
+          'Accesso admin negato dal server. Il tuo account potrebbe non essere admin: esci e accedi di nuovo con un account admin.'
+        )
+        setAnnouncements([])
+        setStats(null)
+        return
+      }
+
+      if (!announcementsRes.ok) {
+        const errBody = await announcementsRes.json().catch(() => ({}))
+        setLoadError(
+          errBody.error ||
+            `Impossibile caricare gli annunci (HTTP ${announcementsRes.status}). Aggiorna la pagina con Ctrl+Shift+R.`
+        )
       }
 
       const statsData = statsRes.ok ? await statsRes.json() : { data: {} }
@@ -176,6 +195,12 @@ export default function AdminPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {loadError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm flex items-start gap-2">
+            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+            <span>{loadError}</span>
+          </div>
+        )}
         {/* Quick Links */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Link href="/admin/pricing" className="bg-gradient-to-br from-amber-400 to-orange-500 text-black rounded-xl p-4 hover:opacity-90 transition">

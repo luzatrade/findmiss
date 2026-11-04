@@ -1,9 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 
-const ITALIAN_CITIES = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../../../data/italian-cities.json'), 'utf8')
-);
+function resolveItalianCitiesPath() {
+  const candidates = [
+    path.join(__dirname, 'italian-cities.json'),
+    path.join(__dirname, '../../data/italian-cities.json'),
+    path.join(__dirname, '../../../data/italian-cities.json'),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error(`italian-cities.json not found (checked: ${candidates.join(', ')})`);
+}
+
+const ITALIAN_CITIES = JSON.parse(fs.readFileSync(resolveItalianCitiesPath(), 'utf8'));
 
 function getItalianCities(options = {}) {
   const search = options.search ? String(options.search).trim().toLowerCase() : '';

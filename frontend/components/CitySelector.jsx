@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { X, MapPin, Search } from 'lucide-react'
 
 import { getApiUrl } from '../lib/runtime-api'
+import { fetchCities as fetchCitiesApi } from '../lib/fetchCities'
 
 const API_URL = getApiUrl()
 
@@ -12,22 +13,17 @@ export default function CitySelector({ isOpen, onClose, onSelectCity }) {
   const [loading, setLoading] = useState(false)
   const [selectedCity, setSelectedCity] = useState(null)
 
-  // Autocomplete con debounce
   const fetchCities = useCallback(async (query) => {
-    if (!query || query.length < 2) {
-      setCities([])
-      return
-    }
-
     setLoading(true)
     try {
-      const response = await fetch(`${API_URL}/cities?search=${encodeURIComponent(query)}&limit=20`)
-      const data = await response.json()
-      if (data.success) {
-        setCities(data.data)
-      }
+      const results = await fetchCitiesApi({
+        search: query || '',
+        limit: query && query.length >= 1 ? 30 : 40,
+      })
+      setCities(results)
     } catch (error) {
       console.error('Errore fetch città:', error)
+      setCities([])
     } finally {
       setLoading(false)
     }
@@ -79,9 +75,9 @@ export default function CitySelector({ isOpen, onClose, onSelectCity }) {
             <p className="text-lg">Caricamento...</p>
           </div>
         ) : cities.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="flex flex-col items-center justify-center h-full text-gray-500 px-6 text-center">
             <p className="text-lg">Nessuna città trovata</p>
-            <p className="text-sm text-gray-600 mt-2">Prova a cercare una città</p>
+            <p className="text-sm text-gray-600 mt-2">Prova con un altro nome</p>
           </div>
         ) : (
           cities.map(city => (

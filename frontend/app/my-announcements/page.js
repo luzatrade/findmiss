@@ -1,16 +1,17 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { 
   ArrowLeft, Plus, Edit, Trash2, Eye, Heart, MessageCircle, 
-  MoreVertical, MapPin, Clock, Crown, Check, AlertCircle,
-  TrendingUp, Calendar, Settings, Pause, Play, Loader2
+  MapPin, Clock, Crown, Check, AlertCircle,
+  TrendingUp, Calendar, Settings, Pause, Play, Loader2, Film, Upload
 } from 'lucide-react'
 
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api'
 import OptimizedImage from '../../components/OptimizedImage'
-import { MEDIA_SIZES } from '../../lib/media'
+import { MEDIA_SIZES, validateMediaFile } from '../../lib/media'
+import { deleteReelMedia, uploadReelToAnnouncement } from '../../lib/reelMedia'
 import { isFilterProfileIncomplete } from '../../lib/announcementFilterProfile'
 
 const API_URL = getApiUrl()
@@ -25,6 +26,9 @@ export default function MyAnnouncementsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [stats, setStats] = useState({ total: 0, active: 0, views: 0, contacts: 0 })
+  const [reelUploadTarget, setReelUploadTarget] = useState(null)
+  const [reelBusyId, setReelBusyId] = useState(null)
+  const reelFileInputRef = useRef(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -97,6 +101,59 @@ export default function MyAnnouncementsPage() {
       alert('Impossibile eliminare l\'annuncio')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const getReelMedia = (announcement) =>
+    announcement.media?.find((item) => item.is_reel && item.type === 'video')
+
+  const handleReelFileChange = async (event) => {
+    const file = event.target.files?.[0]
+    const announcementId = reelUploadTarget
+    event.target.value = ''
+    setReelUploadTarget(null)
+    if (!file || !announcementId) return
+
+    const validationError = validateMediaFile(file)
+    if (validationError) {
+      alert(validationError)
+      return
+    }
+
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/auth?redirect=/my-announcements')
+      return
+    }
+
+    setReelBusyId(announcementId)
+    try {
+      await uploadReelToAnnouncement(token, announcementId, file)
+      await fetchMyAnnouncements()
+      alert('Reel caricato. Sarà nel feed quando l\'annuncio è attivo.')
+    } catch (err) {
+      alert(err.message || 'Errore caricamento reel')
+    } finally {
+      setReelBusyId(null)
+    }
+  }
+
+  const handleDeleteReel = async (announcement) => {
+    const reel = getReelMedia(announcement)
+    if (!reel?.id) return
+    if (!window.confirm('Eliminare il reel di questo annuncio?')) return
+
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    setReelBusyId(announcement.id)
+    try {
+      await deleteReelMedia(token, reel.id)
+      await fetchMyAnnouncements()
+    } catch (err) {
+      alert(err.message || 'Errore eliminazione reel')
+    } finally {
+      setReelBusyId(null)
     }
   }
 
@@ -176,6 +233,13 @@ export default function MyAnnouncementsPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] pb-20">
+      <input
+        ref={reelFileInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={handleReelFileChange}
+      />
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-lg border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -327,6 +391,49 @@ export default function MyAnnouncementsPage() {
                             {new Date(announcement.created_at).toLocaleDateString('it-IT')}
                           </span>
                         </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {getReelMedia(announcement) ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
+                                <Film size={12} />
+                                Reel attivo
+                              </span>
+                              <Link
+                                href="/reels"
+                                className="text-xs text-pink-600 hover:underline"
+                              >
+                                Vedi nel feed
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteReel(announcement)}
+                                disabled={reelBusyId === announcement.id}
+                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:underline disabled:opacity-50"
+                              >
+                                <Trash2 size={12} />
+                                Elimina reel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReelUploadTarget(announcement.id)
+                                reelFileInputRef.current?.click()
+                              }}
+                              disabled={reelBusyId === announcement.id}
+                              className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-gradient-to-r from-pink-500 to-purple-600 px-3 py-1.5 rounded-full disabled:opacity-50"
+                            >
+                              {reelBusyId === announcement.id ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <Upload size={12} />
+                              )}
+                              Carica reel
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {/* Actions */}
@@ -413,6 +520,13 @@ export default function MyAnnouncementsPage() {
               >
                 <Plus size={20} />
                 <span className="text-sm font-medium">Nuovo annuncio</span>
+              </Link>
+              <Link
+                href="/reels?upload=1"
+                className="flex items-center gap-2 p-3 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition"
+              >
+                <Film size={20} />
+                <span className="text-sm font-medium">Carica reel</span>
               </Link>
               <Link
                 href="/payments"

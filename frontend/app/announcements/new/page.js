@@ -10,6 +10,7 @@ import {
 
 import { getApiUrl } from '../../../lib/runtime-api'
 import { validateMediaFile } from '../../../lib/media'
+import CityPickerField from '../../../components/CityPickerField'
 import AdvertiserFilterProfileFields from '../../../components/AdvertiserFilterProfileFields'
 import { buildFilterProfilePayload } from '../../../lib/announcementFilterProfile'
 import { DEFAULT_SERVICE_FLAGS } from '../../../lib/filterFieldOptions'
@@ -504,18 +505,12 @@ export default function NewAnnouncementPage() {
 
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-700">Città *</label>
-                  <select
+                  <CityPickerField
                     value={formData.city_id}
-                    onChange={(e) => updateField('city_id', e.target.value)}
-                    className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400/50 ${
-                      errors.city_id ? 'border-red-400' : 'border-gray-200'
-                    }`}
-                  >
-                    <option value="">Seleziona città</option>
-                    {cities.map(city => (
-                      <option key={city.id} value={city.id}>{city.name}</option>
-                    ))}
-                  </select>
+                    cities={cities}
+                    onChange={(id) => updateField('city_id', id)}
+                    error={errors.city_id}
+                  />
                   {errors.city_id && (
                     <p className="text-xs text-red-500">{errors.city_id}</p>
                   )}

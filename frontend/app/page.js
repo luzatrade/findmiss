@@ -5,6 +5,7 @@ import { MapPin, Search, Heart, Check, X, Sparkles, Users, Video, Menu } from 'l
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import CitySelector from '../components/CitySelector'
+import CitySearchDropdown from '../components/CitySearchDropdown'
 import AdvancedFilters from '../components/AdvancedFilters'
 import UserMenu from '../components/UserMenu'
 import NotificationsBell from './components/NotificationsBell'
@@ -15,6 +16,7 @@ import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../lib/runtime-api'
 import { FALLBACK_ANNOUNCEMENTS } from '../lib/fallback-announcements'
 import { isDemoFallbackEnabled } from '../lib/demoMode'
 import { MEDIA_SIZES } from '../lib/media'
+import { useInboxAlerts } from '../lib/useInboxAlerts'
 
 // Nuove categorie
 const CATEGORIES = [
@@ -31,6 +33,7 @@ export default function HomePage() {
   const [showFiltersModal, setShowFiltersModal] = useState(false)
   const [showMenuModal, setShowMenuModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [cityDropdownOpen, setCityDropdownOpen] = useState(false)
   const [selectedCity, setSelectedCity] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [filters, setFilters] = useState(null)
@@ -41,6 +44,10 @@ export default function HomePage() {
   const [announcements, setAnnouncements] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState(null)
+  const { totalUnread, hasAlerts, isLoggedIn: alertsLoggedIn } = useInboxAlerts({
+    active: true,
+    pollMs: 30000,
+  })
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -124,12 +131,23 @@ export default function HomePage() {
 
   const handleSearchSubmit = (e) => {
     e?.preventDefault?.()
+    setCityDropdownOpen(false)
     const query = searchQuery.trim()
+    if (selectedCity?.name) {
+      router.push(`/filtri?city=${encodeURIComponent(selectedCity.name)}`)
+      return
+    }
     if (!query) {
       router.push('/filtri')
       return
     }
     router.push(`/filtri?q=${encodeURIComponent(query)}`)
+  }
+
+  const handleCityPick = (city) => {
+    setSelectedCity(city)
+    setSearchQuery(city.name)
+    setCityDropdownOpen(false)
   }
 
   const guessCityFromCoords = (lat, lng) => {
@@ -297,18 +315,28 @@ export default function HomePage() {
             <NotificationsBell />
             <button
               onClick={() => setShowMenuModal(true)}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
+              className="relative p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
               aria-label="Apri menu"
             >
               <Menu size={22} />
+              {alertsLoggedIn && hasAlerts && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-pink-500 text-[9px] font-bold text-white flex items-center justify-center">
+                  {totalUnread > 9 ? '9+' : totalUnread}
+                </span>
+              )}
             </button>
           </div>
           <button
             onClick={() => setShowMenuModal(true)}
-            className="sm:hidden p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
+            className="relative sm:hidden p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
             aria-label="Apri menu"
           >
             <Menu size={22} />
+            {alertsLoggedIn && hasAlerts && (
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-pink-500 text-[9px] font-bold text-white flex items-center justify-center">
+                {totalUnread > 9 ? '9+' : totalUnread}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -322,15 +350,27 @@ export default function HomePage() {
           {/* Search Bar */}
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
             <div className="flex-1 relative">
-              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400 z-10">
                 <Search size={18} />
               </div>
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setSelectedCity(null)
+                  setCityDropdownOpen(true)
+                }}
+                onFocus={() => setCityDropdownOpen(true)}
                 placeholder="Cerca città, nome, servizi..."
+                autoComplete="off"
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40 focus:border-pink-500 placeholder:text-gray-400 shadow-sm"
+              />
+              <CitySearchDropdown
+                open={cityDropdownOpen}
+                query={searchQuery}
+                onSelect={handleCityPick}
+                onClose={() => setCityDropdownOpen(false)}
               />
             </div>
             <button

@@ -249,6 +249,61 @@ async function persistAnnouncementMedia(req, res) {
   }
 }
 
+router.delete('/media/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const media = await prisma.media.findUnique({
+      where: { id },
+      include: { announcement: { select: { id: true, user_id: true } } },
+    });
+
+    if (!media) {
+      return res.status(404).json({ success: false, error: 'Media non trovato' });
+    }
+
+    if (media.announcement.user_id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Non autorizzato' });
+    }
+
+    const urlPath = media.url || '';
+    const match = urlPath.match(/\/uploads\/(images|videos)\/([^/?#]+)/);
+    if (match) {
+      const filePath = path.join(UPLOADS_ROOT, match[1], match[2]);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    if (media.thumbnail_url) {
+      const thumbMatch = media.thumbnail_url.match(/\/uploads\/(images|videos)\/([^/?#]+)/);
+      if (thumbMatch) {
+        const thumbPath = path.join(UPLOADS_ROOT, thumbMatch[1], thumbMatch[2]);
+        if (fs.existsSync(thumbPath)) {
+          fs.unlinkSync(thumbPath);
+        }
+      }
+    }
+
+    const announcementId = media.announcement_id;
+    await prisma.media.delete({ where: { id } });
+
+    const videoCount = await prisma.media.count({
+      where: { announcement_id: announcementId, type: 'video' },
+    });
+    await prisma.announcement.update({
+      where: { id: announcementId },
+      data: { has_video: videoCount > 0 },
+    });
+
+    res.json({ success: true, message: 'Media eliminato' });
+  } catch (error) {
+    console.error('Errore eliminazione media:', error);
+    res.status(500).json({ success: false, error: 'Errore eliminazione media' });
+  }
+});
+
 router.post('/', authenticate, upload.single('file'), handleSingleUpload);
 router.post('/media', authenticate, upload.array('files', 10), persistAnnouncementMedia);
 router.post('/media/single', authenticate, upload.single('file'), persistAnnouncementMedia);

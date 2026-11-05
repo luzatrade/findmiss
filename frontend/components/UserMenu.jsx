@@ -6,11 +6,20 @@ import {
   X, User, Heart, Bell, Settings, HelpCircle, LogOut, LogIn, UserPlus, 
   Briefcase, MessageCircle, CreditCard, Shield, Play
 } from 'lucide-react'
+import { useInboxAlerts } from '../lib/useInboxAlerts'
+import MenuAlertsBanner from './MenuAlertsBanner'
+import UnreadBadge from './UnreadBadge'
 
 export default function UserMenu({ isOpen, onClose }) {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const {
+    unreadNotifications,
+    unreadMessages,
+    hasAlerts,
+    refresh: refreshAlerts,
+  } = useInboxAlerts({ active: isOpen, pollMs: isOpen ? 30000 : 0 })
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -29,6 +38,12 @@ export default function UserMenu({ isOpen, onClose }) {
       }
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (isOpen && isLoggedIn) {
+      refreshAlerts()
+    }
+  }, [isOpen, isLoggedIn, refreshAlerts])
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -56,7 +71,12 @@ export default function UserMenu({ isOpen, onClose }) {
       <div className="relative w-full bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto animate-slide-up">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex items-center justify-between z-10">
-          <h2 className="text-xl font-bold text-gray-900">Menu</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-900">Menu</h2>
+            {isLoggedIn && hasAlerts && (
+              <UnreadBadge count={unreadNotifications + unreadMessages} />
+            )}
+          </div>
           <button 
             onClick={onClose} 
             className="p-2 hover:bg-gray-100 rounded-full transition"
@@ -130,6 +150,12 @@ export default function UserMenu({ isOpen, onClose }) {
                 </div>
               </div>
 
+              <MenuAlertsBanner
+                unreadNotifications={unreadNotifications}
+                unreadMessages={unreadMessages}
+                onNavigate={onClose}
+              />
+
               {/* Menu items loggato */}
               <button 
                 onClick={() => handleNavigation('/profile/edit')}
@@ -157,10 +183,24 @@ export default function UserMenu({ isOpen, onClose }) {
 
               <button 
                 onClick={() => handleNavigation('/chat')}
-                className="w-full bg-gray-50 hover:bg-gray-100 p-4 rounded-xl flex items-center gap-4 transition"
+                className="w-full bg-gray-50 hover:bg-gray-100 p-4 rounded-xl flex items-center justify-between gap-4 transition"
               >
-                <MessageCircle size={24} className="text-blue-500" />
-                <span className="text-gray-900 font-medium">Messaggi</span>
+                <div className="flex items-center gap-4">
+                  <MessageCircle size={24} className="text-blue-500" />
+                  <span className="text-gray-900 font-medium">Messaggi</span>
+                </div>
+                <UnreadBadge count={unreadMessages} />
+              </button>
+
+              <button 
+                onClick={() => handleNavigation('/settings')}
+                className="w-full bg-gray-50 hover:bg-gray-100 p-4 rounded-xl flex items-center justify-between gap-4 transition"
+              >
+                <div className="flex items-center gap-4">
+                  <Bell size={24} className="text-green-500" />
+                  <span className="text-gray-900 font-medium">Notifiche</span>
+                </div>
+                <UnreadBadge count={unreadNotifications} />
               </button>
 
               <button 

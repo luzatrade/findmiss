@@ -8,6 +8,12 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../../lib/runtime-api'
+import AdvertiserFilterProfileFields from '../../../../components/AdvertiserFilterProfileFields'
+import {
+  buildFilterProfilePayload,
+  profileFromAnnouncement,
+} from '../../../../lib/announcementFilterProfile'
+import { DEFAULT_SERVICE_FLAGS } from '../../../../lib/filterFieldOptions'
 
 const API_URL = getApiUrl()
 
@@ -56,6 +62,19 @@ export default function EditAnnouncementPage({ params }) {
     weight: '',
     hair_color: '',
     eye_color: '',
+    cup_size: '',
+    ethnicity: '',
+    nationality: '',
+    language: '',
+    body_type: '',
+    smoker: false,
+    speaks_english: false,
+    has_tattoos: false,
+    has_piercings: false,
+    is_available_now: false,
+    available_overnight: false,
+    available_for: [],
+    services: { ...DEFAULT_SERVICE_FLAGS },
     working_hours_start: '10:00',
     working_hours_end: '22:00',
     status: 'active',
@@ -97,6 +116,7 @@ export default function EditAnnouncementPage({ params }) {
       
       if (announcementData.success && announcementData.data) {
         const a = announcementData.data
+        const profile = profileFromAnnouncement(a)
         setFormData({
           title: a.title || '',
           stage_name: a.stage_name || '',
@@ -108,13 +128,10 @@ export default function EditAnnouncementPage({ params }) {
           price_1hour: a.price_1hour?.toString() || '',
           price_2hour: a.price_2hour?.toString() || '',
           price_night: a.price_night?.toString() || '',
-          height: a.height?.toString() || '',
-          weight: a.weight?.toString() || '',
-          hair_color: a.hair_color || '',
-          eye_color: a.eye_color || '',
           working_hours_start: a.working_hours_start || '10:00',
           working_hours_end: a.working_hours_end || '22:00',
           status: a.status || 'active',
+          ...profile,
         })
         setExistingMedia(a.media || [])
       } else {
@@ -173,14 +190,19 @@ export default function EditAnnouncementPage({ params }) {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          ...formData,
+          title: formData.title,
+          stage_name: formData.stage_name,
+          description: formData.description,
+          category_id: formData.category_id,
+          city_id: formData.city_id,
           age: formData.age ? Number(formData.age) : null,
-          height: formData.height ? Number(formData.height) : null,
-          weight: formData.weight ? Number(formData.weight) : null,
           price_30min: formData.price_30min ? Number(formData.price_30min) : null,
           price_1hour: formData.price_1hour ? Number(formData.price_1hour) : null,
           price_2hour: formData.price_2hour ? Number(formData.price_2hour) : null,
           price_night: formData.price_night ? Number(formData.price_night) : null,
+          working_hours_start: formData.working_hours_start,
+          working_hours_end: formData.working_hours_end,
+          ...buildFilterProfilePayload(formData),
         })
       })
       
@@ -431,58 +453,12 @@ export default function EditAnnouncementPage({ params }) {
           </div>
         </section>
 
-        {/* Caratteristiche */}
-        <section className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-4">
-          <h2 className="font-semibold text-gray-900">Caratteristiche</h2>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Altezza (cm)</label>
-              <input
-                type="number"
-                value={formData.height}
-                onChange={(e) => updateField('height', e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Peso (kg)</label>
-              <input
-                type="number"
-                value={formData.weight}
-                onChange={(e) => updateField('weight', e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Colore capelli</label>
-              <select
-                value={formData.hair_color}
-                onChange={(e) => updateField('hair_color', e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40"
-              >
-                <option value="">Seleziona</option>
-                <option value="nero">Nero</option>
-                <option value="castano">Castano</option>
-                <option value="biondo">Biondo</option>
-                <option value="rosso">Rosso</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Colore occhi</label>
-              <select
-                value={formData.eye_color}
-                onChange={(e) => updateField('eye_color', e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40"
-              >
-                <option value="">Seleziona</option>
-                <option value="marrone">Marrone</option>
-                <option value="verde">Verde</option>
-                <option value="azzurro">Azzurro</option>
-                <option value="grigio">Grigio</option>
-              </select>
-            </div>
-          </div>
+        <section className="bg-white rounded-2xl border border-pink-200 p-5 shadow-sm space-y-4 ring-1 ring-pink-100">
+          <AdvertiserFilterProfileFields
+            formData={formData}
+            updateField={updateField}
+            setFormData={setFormData}
+          />
         </section>
 
         {/* Orari */}

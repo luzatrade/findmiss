@@ -76,23 +76,36 @@ export default function HomePage() {
         const json = await res.json()
         if (json.success && Array.isArray(json.data)) {
           // Trasforma i dati dal backend al formato frontend
-          const transformed = json.data.map(a => ({
-            id: a.id,
-            title: a.title || a.stage_name || 'Senza titolo',
-            age: a.age || 0,
-            city: a.city?.name || 'N/D',
-            price: a.price_1hour ? Number(a.price_1hour) : 0,
-            verified: a.is_verified || false,
-            vip: a.is_vip || false,
-            availableNow: a.is_available_now || false,
-            image: toImageUrl(a.media?.[0]?.thumbnail_url || a.media?.[0]?.url),
-            media: a.media?.[0] || null,
-            hairColor: a.hair_color,
-            eyeColor: a.eye_color,
-            cupSize: a.cup_size,
-            category: a.category?.slug || 'miss',
-            services: a.services ? (typeof a.services === 'string' ? JSON.parse(a.services) : a.services) : null
-          }))
+          const transformed = json.data.map(a => {
+            const services = a.services
+              ? (typeof a.services === 'string' ? JSON.parse(a.services) : a.services)
+              : null
+            return {
+              id: a.id,
+              title: a.title || a.stage_name || 'Senza titolo',
+              age: a.age || 0,
+              city: a.city?.name || 'N/D',
+              price: a.price_1hour ? Number(a.price_1hour) : 0,
+              verified: a.is_verified || false,
+              vip: a.is_vip || false,
+              availableNow: a.is_available_now || false,
+              image: toImageUrl(a.media?.[0]?.thumbnail_url || a.media?.[0]?.url),
+              media: a.media?.[0] || null,
+              hairColor: a.hair_color,
+              eyeColor: a.eye_color,
+              cupSize: a.cup_size,
+              bodyType: services?.bodyType || null,
+              height: a.height || null,
+              weight: a.weight || null,
+              ethnicity: a.ethnicity || null,
+              smoker: Boolean(a.smoker),
+              speaksEnglish: Boolean(services?.speaksEnglish),
+              tatoos: Boolean(services?.tatoos),
+              piercings: Boolean(services?.piercings),
+              category: a.category?.slug || 'miss',
+              services,
+            }
+          })
           setAnnouncements(transformed)
         } else if (isDemoFallbackEnabled()) {
           setAnnouncements(FALLBACK_ANNOUNCEMENTS)
@@ -222,6 +235,43 @@ export default function HomePage() {
     }
     if (filters.bodyType) {
       filteredAnnouncements = filteredAnnouncements.filter(a => a.bodyType === filters.bodyType)
+    }
+    if (filters.ethnicity) {
+      filteredAnnouncements = filteredAnnouncements.filter(
+        (a) => a.ethnicity && a.ethnicity.toLowerCase() === filters.ethnicity.toLowerCase()
+      )
+    }
+    if (filters.heightMin) {
+      filteredAnnouncements = filteredAnnouncements.filter(
+        (a) => a.height && a.height >= filters.heightMin
+      )
+    }
+    if (filters.heightMax) {
+      filteredAnnouncements = filteredAnnouncements.filter(
+        (a) => a.height && a.height <= filters.heightMax
+      )
+    }
+    if (filters.weightMin) {
+      filteredAnnouncements = filteredAnnouncements.filter(
+        (a) => a.weight && a.weight >= filters.weightMin
+      )
+    }
+    if (filters.weightMax) {
+      filteredAnnouncements = filteredAnnouncements.filter(
+        (a) => a.weight && a.weight <= filters.weightMax
+      )
+    }
+    if (filters.smoker) {
+      filteredAnnouncements = filteredAnnouncements.filter((a) => a.smoker)
+    }
+    if (filters.speaksEnglish) {
+      filteredAnnouncements = filteredAnnouncements.filter((a) => a.speaksEnglish)
+    }
+    if (filters.tatoos) {
+      filteredAnnouncements = filteredAnnouncements.filter((a) => a.tatoos)
+    }
+    if (filters.piercings) {
+      filteredAnnouncements = filteredAnnouncements.filter((a) => a.piercings)
     }
     if (filters.services) {
       Object.entries(filters.services).forEach(([service, isActive]) => {

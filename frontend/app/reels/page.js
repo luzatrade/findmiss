@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Heart, MessageCircle, Share2, MoreVertical, Volume2, VolumeX,
-  Play, Pause, ChevronUp, ChevronDown, X, Phone, User, Check,
-  MapPin, Eye, Crown, Radio, Plus, Upload, Loader2
+  Heart, MessageCircle, Share2, Volume2, VolumeX,
+  Play, ChevronUp, ChevronDown, X, Phone, User, Check,
+  MapPin, Eye, Plus, Upload, Loader2, Trash2, Film
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -12,6 +12,11 @@ import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-a
 import OptimizedVideo from '../../components/OptimizedVideo'
 import OptimizedImage from '../../components/OptimizedImage'
 import { validateMediaFile } from '../../lib/media'
+import {
+  deleteReelMedia,
+  fetchMyAnnouncements,
+  uploadReelToAnnouncement,
+} from '../../lib/reelMedia'
 
 const API_URL = getApiUrl()
 
@@ -28,13 +33,17 @@ export default function ReelsPage() {
   const [touchStart, setTouchStart] = useState(null)
   const [showComments, setShowComments] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
-  const [isAdvertiser, setIsAdvertiser] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState(null)
+  const [myAnnouncements, setMyAnnouncements] = useState([])
+  const [isDeletingReel, setIsDeletingReel] = useState(false)
   const [uploadData, setUploadData] = useState({
     video: null,
     title: '',
     description: '',
     city_id: '',
-    category_id: ''
+    category_id: '',
+    announcement_id: '',
   })
   const [cities, setCities] = useState([])
   const [categories, setCategories] = useState([])
@@ -49,15 +58,30 @@ export default function ReelsPage() {
     loadReels()
     loadCitiesAndCategories()
 
-    // Check if user is advertiser
+    const token = localStorage.getItem('token')
     const user = localStorage.getItem('user')
+    setIsLoggedIn(Boolean(token && user))
     if (user) {
       try {
         const parsed = JSON.parse(user)
-        setIsAdvertiser(parsed.role === 'advertiser')
-      } catch {}
+        setCurrentUserId(parsed.id || null)
+      } catch {
+        setCurrentUserId(null)
+      }
+    }
+    if (searchParams.get('upload') === '1' && token) {
+      setShowUploadModal(true)
     }
   }, [])
+
+  useEffect(() => {
+    if (!showUploadModal || !isLoggedIn) return
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetchMyAnnouncements(token)
+      .then(setMyAnnouncements)
+      .catch(() => setMyAnnouncements([]))
+  }, [showUploadModal, isLoggedIn])
 
   const loadCitiesAndCategories = async () => {
     try {
@@ -111,7 +135,12 @@ export default function ReelsPage() {
                   : null,
               }]
             : []
-          return { ...reel, media, video: media[0] || null }
+          return {
+            ...reel,
+            media,
+            video: media[0] || null,
+            media_id: reel.media_id || media[0]?.id || null,
+          }
         })
         setReels(normalized)
       }
@@ -318,23 +347,39 @@ export default function ReelsPage() {
       setUploadError('Seleziona un video')
       return
     }
-    if (!uploadData.title.trim()) {
-      setUploadError('Inserisci un titolo')
-      return
-    }
-    if (!uploadData.city_id) {
-      setUploadError('Seleziona una città')
-      return
-    }
-    if (!uploadData.category_id) {
-      setUploadError('Seleziona una categoria')
-      return
-    }
-
     setIsUploading(true)
     setUploadError('')
 
     try {
+      if (uploadData.announcement_id) {
+        await uploadReelToAnnouncement(token, uploadData.announcement_id, uploadData.video)
+        setShowUploadModal(false)
+        setUploadData({
+          video: null,
+          title: '',
+          description: '',
+          city_id: '',
+          category_id: '',
+          announcement_id: '',
+        })
+        await loadReels()
+        alert('Reel caricato! Se l\'annuncio è in approvazione, il reel sarà visibile dopo l\'approvazione.')
+        return
+      }
+
+      if (!uploadData.title.trim()) {
+        setUploadError('Inserisci un titolo')
+        return
+      }
+      if (!uploadData.city_id) {
+        setUploadError('Seleziona una città')
+        return
+      }
+      if (!uploadData.category_id) {
+        setUploadError('Seleziona una categoria')
+        return
+      }
+
       // 1. Crea annuncio
       const announcementRes = await fetch(`${API_URL}/announcements`, {
         method: 'POST',
@@ -357,23 +402,7 @@ export default function ReelsPage() {
       const announcementData = await announcementRes.json()
 
       if (announcementData.success && announcementData.data?.id) {
-        // 2. Upload video come reel
-        const formData = new FormData()
-        formData.append('files', uploadData.video)
-        formData.append('announcement_id', announcementData.data.id)
-        formData.append('is_reel', 'true')
-
-        const uploadRes = await fetch(`${API_URL}/upload/media`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        })
-        const uploadResult = await uploadRes.json()
-        if (!uploadRes.ok || !uploadResult.success) {
-          throw new Error(uploadResult.error || 'Errore upload video')
-        }
+        await uploadReelToAnnouncement(token, announcementData.data.id, uploadData.video)
 
         setShowUploadModal(false)
         setUploadData({
@@ -381,12 +410,12 @@ export default function ReelsPage() {
           title: '',
           description: '',
           city_id: '',
-          category_id: ''
+          category_id: '',
+          announcement_id: '',
         })
 
-        // Reload reels
         await loadReels()
-        alert('Reel pubblicato con successo!')
+        alert('Reel inviato! Sarà visibile nel feed quando l\'annuncio risulta attivo.')
       } else {
         setUploadError(announcementData.error || 'Errore nella pubblicazione')
       }
@@ -398,6 +427,39 @@ export default function ReelsPage() {
     }
   }
 
+  const handleDeleteReel = async () => {
+    const token = localStorage.getItem('token')
+    const reel = reels[currentIndex]
+    const mediaId = reel?.media_id || reel?.video?.id
+    if (!token || !mediaId) return
+
+    if (!window.confirm('Eliminare questo reel? Il video verrà rimosso dal feed.')) {
+      return
+    }
+
+    setIsDeletingReel(true)
+    try {
+      await deleteReelMedia(token, mediaId)
+      setReels((prev) => {
+        const next = prev.filter((r) => r.media_id !== mediaId && r.video?.id !== mediaId)
+        setCurrentIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)))
+        return next
+      })
+    } catch (error) {
+      alert(error.message || 'Impossibile eliminare il reel')
+    } finally {
+      setIsDeletingReel(false)
+    }
+  }
+
+  const openUploadModal = () => {
+    if (!isLoggedIn) {
+      router.push('/auth?redirect=/reels?upload=1')
+      return
+    }
+    setShowUploadModal(true)
+  }
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
@@ -406,21 +468,10 @@ export default function ReelsPage() {
     )
   }
 
-  if (reels.length === 0) {
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-center">
-          <Play className="mx-auto text-gray-600 mb-4" size={64} />
-          <p className="text-white text-xl mb-2">Nessun reel disponibile</p>
-          <Link href="/" className="text-pink-400 hover:underline">
-            Torna alla home
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
   const currentReel = reels[currentIndex]
+  const isOwner =
+    Boolean(currentUserId && currentReel?.user?.id === currentUserId) ||
+    Boolean(currentUserId && currentReel?.user_id === currentUserId)
 
   return (
     <div 
@@ -431,6 +482,36 @@ export default function ReelsPage() {
     >
       {/* Reel Container */}
       <div className="h-full relative">
+        {reels.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+            <Film className="text-gray-600 mb-4" size={64} />
+            <p className="text-white text-xl mb-2">Nessun reel nel feed</p>
+            <p className="text-gray-400 text-sm mb-6 max-w-sm">
+              Carica un video verticale collegato al tuo annuncio per comparire qui.
+            </p>
+            {isLoggedIn ? (
+              <button
+                type="button"
+                onClick={openUploadModal}
+                className="inline-flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full font-semibold shadow-lg shadow-pink-500/30"
+              >
+                <Plus size={20} />
+                Carica reel
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => router.push('/auth?redirect=/reels?upload=1')}
+                className="text-pink-400 hover:underline"
+              >
+                Accedi per caricare un reel
+              </button>
+            )}
+            <Link href="/" className="text-gray-500 hover:text-white text-sm mt-6">
+              Torna alla home
+            </Link>
+          </div>
+        )}
         {reels.map((reel, index) => (
           <div
             key={reel.id}
@@ -493,21 +574,43 @@ export default function ReelsPage() {
           <X size={24} className="text-white" />
         </button>
 
-        <div className="flex items-center gap-2">
-          <span className="bg-black/30 backdrop-blur text-white px-3 py-1 rounded-full text-sm">
-            {currentIndex + 1} / {reels.length}
-          </span>
-        </div>
+        {reels.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="bg-black/30 backdrop-blur text-white px-3 py-1 rounded-full text-sm">
+              {currentIndex + 1} / {reels.length}
+            </span>
+          </div>
+        )}
+        {reels.length === 0 && <div />}
 
         <div className="flex items-center gap-2">
-          {/* Upload Reel Button - TEMPORANEO: sempre visibile */}
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="p-2 bg-pink-500 hover:bg-pink-600 rounded-full backdrop-blur transition shadow-lg shadow-pink-500/50"
-            title="Carica Reel"
-          >
-            <Plus size={24} className="text-white" />
-          </button>
+          {isLoggedIn && (
+            <button
+              type="button"
+              onClick={openUploadModal}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-pink-500 hover:bg-pink-600 rounded-full backdrop-blur transition shadow-lg shadow-pink-500/50 text-white text-sm font-semibold"
+              title="Carica reel"
+            >
+              <Plus size={20} />
+              <span className="hidden xs:inline sm:inline">Reel</span>
+            </button>
+          )}
+
+          {isOwner && reels.length > 0 && (
+            <button
+              type="button"
+              onClick={handleDeleteReel}
+              disabled={isDeletingReel}
+              className="p-2 bg-red-500/90 hover:bg-red-600 rounded-full backdrop-blur transition disabled:opacity-50"
+              title="Elimina reel"
+            >
+              {isDeletingReel ? (
+                <Loader2 size={22} className="text-white animate-spin" />
+              ) : (
+                <Trash2 size={22} className="text-white" />
+              )}
+            </button>
+          )}
 
           <button
             onClick={() => setIsMuted(!isMuted)}
@@ -542,6 +645,7 @@ export default function ReelsPage() {
       )}
 
       {/* Right Side Actions - Ottimizzato per mobile */}
+      {currentReel && (
       <div className="absolute right-3 bottom-24 flex flex-col items-center gap-3 z-10">
         {/* Profile + Follow */}
         <div className="relative">
@@ -623,8 +727,10 @@ export default function ReelsPage() {
           <span className="text-white text-[10px] font-medium">Call</span>
         </button>
       </div>
+      )}
 
       {/* Bottom Info */}
+      {currentReel && (
       <div className="absolute bottom-0 left-0 right-20 p-4 z-10">
         {/* User Info */}
         <Link
@@ -672,8 +778,10 @@ export default function ReelsPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* Progress indicators */}
+      {reels.length > 0 && (
       <div className="absolute bottom-0 left-0 right-0 flex gap-1 p-1 z-10">
         {reels.slice(0, 10).map((_, index) => (
           <div
@@ -688,6 +796,7 @@ export default function ReelsPage() {
           />
         ))}
       </div>
+      )}
 
       {/* Comments Modal */}
       {showComments && (
@@ -736,6 +845,33 @@ export default function ReelsPage() {
 
             {/* Form */}
             <div className="p-5 space-y-4">
+              {myAnnouncements.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Collega a un tuo annuncio (consigliato)
+                  </label>
+                  <select
+                    value={uploadData.announcement_id}
+                    onChange={(e) =>
+                      setUploadData((prev) => ({ ...prev, announcement_id: e.target.value }))
+                    }
+                    className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    disabled={isUploading}
+                  >
+                    <option value="">Crea nuovo profilo reel</option>
+                    {myAnnouncements.map((ann) => (
+                      <option key={ann.id} value={ann.id}>
+                        {ann.stage_name || ann.title} — {ann.city?.name || 'Senza città'} (
+                        {ann.status})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Con un annuncio esistente basta il video: titolo e categoria non servono.
+                  </p>
+                </div>
+              )}
+
               {/* Video Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -772,73 +908,83 @@ export default function ReelsPage() {
                 </button>
               </div>
 
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Titolo *
-                </label>
-                <input
-                  type="text"
-                  value={uploadData.title}
-                  onChange={(e) => setUploadData(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  placeholder="Es. Ciao sono Sofia..."
-                  maxLength={100}
-                  disabled={isUploading}
-                />
-              </div>
+              {!uploadData.announcement_id && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Titolo *
+                    </label>
+                    <input
+                      type="text"
+                      value={uploadData.title}
+                      onChange={(e) => setUploadData((prev) => ({ ...prev, title: e.target.value }))}
+                      className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      placeholder="Es. Ciao sono Sofia..."
+                      maxLength={100}
+                      disabled={isUploading}
+                    />
+                  </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Descrizione
-                </label>
-                <textarea
-                  value={uploadData.description}
-                  onChange={(e) => setUploadData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
-                  placeholder="Descrizione breve..."
-                  rows={3}
-                  maxLength={200}
-                  disabled={isUploading}
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Descrizione
+                    </label>
+                    <textarea
+                      value={uploadData.description}
+                      onChange={(e) =>
+                        setUploadData((prev) => ({ ...prev, description: e.target.value }))
+                      }
+                      className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+                      placeholder="Descrizione breve..."
+                      rows={3}
+                      maxLength={200}
+                      disabled={isUploading}
+                    />
+                  </div>
 
-              {/* City */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Città *
-                </label>
-                <select
-                  value={uploadData.city_id}
-                  onChange={(e) => setUploadData(prev => ({ ...prev, city_id: e.target.value }))}
-                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  disabled={isUploading}
-                >
-                  <option value="">Seleziona città</option>
-                  {cities.map(city => (
-                    <option key={city.id} value={city.id}>{city.name}</option>
-                  ))}
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Città *
+                    </label>
+                    <select
+                      value={uploadData.city_id}
+                      onChange={(e) =>
+                        setUploadData((prev) => ({ ...prev, city_id: e.target.value }))
+                      }
+                      className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      disabled={isUploading}
+                    >
+                      <option value="">Seleziona città</option>
+                      {cities.map((city) => (
+                        <option key={city.id} value={city.id}>
+                          {city.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Categoria *
-                </label>
-                <select
-                  value={uploadData.category_id}
-                  onChange={(e) => setUploadData(prev => ({ ...prev, category_id: e.target.value }))}
-                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  disabled={isUploading}
-                >
-                  <option value="">Seleziona categoria</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Categoria *
+                    </label>
+                    <select
+                      value={uploadData.category_id}
+                      onChange={(e) =>
+                        setUploadData((prev) => ({ ...prev, category_id: e.target.value }))
+                      }
+                      className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      disabled={isUploading}
+                    >
+                      <option value="">Seleziona categoria</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
 
               {/* Error */}
               {uploadError && (

@@ -116,6 +116,8 @@ router.get('/', optionalAuth, async (req, res) => {
         reel_views: ann.reel_views,
         reel_likes: ann.reel_likes,
         video: ann.media[0] || null,
+        media_id: ann.media[0]?.id || null,
+        user_id: ann.user_id,
         user: ann.user,
         score: totalScore,
         // Dettagli score per debug

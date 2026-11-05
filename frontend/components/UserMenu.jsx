@@ -208,7 +208,15 @@ export default function UserMenu({ isOpen, onClose }) {
                 className="w-full bg-gray-50 hover:bg-gray-100 p-4 rounded-xl flex items-center gap-4 transition"
               >
                 <Play size={24} className="text-purple-500" />
-                <span className="text-gray-900 font-medium">Reels</span>
+                <span className="text-gray-900 font-medium">Guarda reels</span>
+              </button>
+
+              <button 
+                onClick={() => handleNavigation('/reels?upload=1')}
+                className="w-full bg-gradient-to-r from-pink-50 to-purple-50 hover:from-pink-100 hover:to-purple-100 border border-pink-100 p-4 rounded-xl flex items-center gap-4 transition"
+              >
+                <Play size={24} className="text-pink-500" />
+                <span className="text-gray-900 font-medium">Carica reel</span>
               </button>
 
               <button 

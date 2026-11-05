@@ -11,6 +11,7 @@ import {
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api'
 import OptimizedImage from '../../components/OptimizedImage'
 import { MEDIA_SIZES } from '../../lib/media'
+import { isFilterProfileIncomplete } from '../../lib/announcementFilterProfile'
 
 const API_URL = getApiUrl()
 
@@ -195,6 +196,14 @@ export default function MyAnnouncementsPage() {
       </header>
 
       <div className="max-w-6xl mx-auto p-4 space-y-6">
+        {announcements.some(isFilterProfileIncomplete) && (
+          <div className="bg-purple-50 border border-purple-200 text-purple-900 rounded-xl p-4 text-sm">
+            Per comparire nei <strong>filtri di ricerca</strong> (capelli, servizi, disponibilità, ecc.),
+            apri <strong>Modifica</strong> su ogni annuncio e compila la sezione{' '}
+            <strong>Profilo per ricerca (filtri visitatore)</strong>.
+          </div>
+        )}
+
         {showPendingNotice && (
           <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 text-sm">
             Annuncio inviato. Resta in <strong>attesa di approvazione</strong> admin: comparirà in
@@ -342,8 +351,16 @@ export default function MyAnnouncementsPage() {
                         </Link>
                         <Link
                           href={`/announcements/${announcement.id}/edit`}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition"
-                          title="Modifica"
+                          className={`p-2 rounded-full hover:bg-blue-200 transition ${
+                            isFilterProfileIncomplete(announcement)
+                              ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-300'
+                              : 'bg-blue-100 text-blue-600'
+                          }`}
+                          title={
+                            isFilterProfileIncomplete(announcement)
+                              ? 'Completa profilo per i filtri di ricerca'
+                              : 'Modifica'
+                          }
                         >
                           <Edit size={18} />
                         </Link>

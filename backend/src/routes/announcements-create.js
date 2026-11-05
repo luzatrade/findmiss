@@ -120,7 +120,7 @@ router.put('/:id', authenticate, async (req, res) => {
     if (updateData.available_for && Array.isArray(updateData.available_for)) {
       updateData.available_for = JSON.stringify(updateData.available_for);
     }
-    if (updateData.services && Array.isArray(updateData.services)) {
+    if (updateData.services && typeof updateData.services === 'object') {
       updateData.services = JSON.stringify(updateData.services);
     }
 

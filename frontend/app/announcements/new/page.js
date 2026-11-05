@@ -10,6 +10,13 @@ import {
 
 import { getApiUrl } from '../../../lib/runtime-api'
 import { validateMediaFile } from '../../../lib/media'
+import CityPickerField from '../../../components/CityPickerField'
+import {
+  SERVICE_FILTER_OPTIONS,
+  CUP_SIZE_OPTIONS,
+  ETHNICITY_OPTIONS,
+  NATIONALITY_OPTIONS,
+} from '../../../lib/announcementSearchFields'
 
 const API_URL = getApiUrl()
 
@@ -66,6 +73,19 @@ export default function NewAnnouncementPage() {
     eye_color: '',
     cup_size: '',
     ethnicity: '',
+    nationality: '',
+    language: '',
+    smoker: false,
+    is_available_now: false,
+    available_overnight: false,
+    available_for: [],
+    services: {
+      inCall: false,
+      outCall: false,
+      dinnerDate: false,
+      overnight: false,
+      travel: false,
+    },
     working_hours_start: '10:00',
     working_hours_end: '22:00',
   })
@@ -268,6 +288,12 @@ export default function NewAnnouncementPage() {
           price_2hour: formData.price_2hour ? Number(formData.price_2hour) : null,
           price_night: formData.price_night ? Number(formData.price_night) : null,
           price_videochat: formData.price_videochat ? Number(formData.price_videochat) : null,
+          available_for: formData.available_for.length ? formData.available_for : null,
+          services: formData.services,
+          nationality: formData.nationality || null,
+          language: formData.language || null,
+          cup_size: formData.cup_size || null,
+          ethnicity: formData.ethnicity || null,
           title: `${formData.stage_name} - ${cities.find(c => c.id === formData.city_id)?.name || ''}`
         })
       })
@@ -487,18 +513,12 @@ export default function NewAnnouncementPage() {
 
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-700">Città *</label>
-                  <select
+                  <CityPickerField
                     value={formData.city_id}
-                    onChange={(e) => updateField('city_id', e.target.value)}
-                    className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400/50 ${
-                      errors.city_id ? 'border-red-400' : 'border-gray-200'
-                    }`}
-                  >
-                    <option value="">Seleziona città</option>
-                    {cities.map(city => (
-                      <option key={city.id} value={city.id}>{city.name}</option>
-                    ))}
-                  </select>
+                    cities={cities}
+                    onChange={(id) => updateField('city_id', id)}
+                    error={errors.city_id}
+                  />
                   {errors.city_id && (
                     <p className="text-xs text-red-500">{errors.city_id}</p>
                   )}
@@ -652,6 +672,156 @@ export default function NewAnnouncementPage() {
                     <option value="azzurro">Azzurro</option>
                     <option value="grigio">Grigio</option>
                   </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Taglia reggiseno</label>
+                  <select
+                    value={formData.cup_size}
+                    onChange={(e) => updateField('cup_size', e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                  >
+                    <option value="">Seleziona</option>
+                    {CUP_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Etnia</label>
+                  <select
+                    value={formData.ethnicity}
+                    onChange={(e) => updateField('ethnicity', e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                  >
+                    <option value="">Seleziona</option>
+                    {ETHNICITY_OPTIONS.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Nazionalità</label>
+                  <select
+                    value={formData.nationality}
+                    onChange={(e) => updateField('nationality', e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                  >
+                    <option value="">Seleziona</option>
+                    {NATIONALITY_OPTIONS.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <label className="text-sm font-medium text-gray-700">Lingue parlate</label>
+                  <input
+                    type="text"
+                    value={formData.language}
+                    onChange={(e) => updateField('language', e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                    placeholder="Es. Italiano, Inglese"
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formData.smoker}
+                  onChange={(e) => updateField('smoker', e.target.checked)}
+                  className="rounded border-gray-300 text-pink-500 focus:ring-pink-400"
+                />
+                Fumatore/trice
+              </label>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+              <div>
+                <h3 className="font-semibold text-gray-900">Profilo per ricerca e filtri</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Questi campi compaiono nei filtri del sito: seleziona ciò che offri davvero.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <label className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_available_now}
+                    onChange={(e) => updateField('is_available_now', e.target.checked)}
+                    className="rounded border-gray-300 text-pink-500 focus:ring-pink-400"
+                  />
+                  Disponibile adesso
+                </label>
+                <label className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={formData.available_overnight}
+                    onChange={(e) => updateField('available_overnight', e.target.checked)}
+                    className="rounded border-gray-300 text-pink-500 focus:ring-pink-400"
+                  />
+                  Disponibile per pernottamento
+                </label>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Tipo di incontro</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'incontro', label: 'Incontro di persona' },
+                    { id: 'videochat', label: 'Videochat / online' },
+                    { id: 'entrambi', label: 'Entrambi' },
+                  ].map((item) => {
+                    const active = formData.available_for.includes(item.id)
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            available_for: active
+                              ? prev.available_for.filter((v) => v !== item.id)
+                              : [...prev.available_for, item.id],
+                          }))
+                        }}
+                        className={`rounded-full border px-4 py-2 text-sm transition ${
+                          active
+                            ? 'border-pink-500 bg-pink-50 text-pink-700'
+                            : 'border-gray-200 text-gray-700 hover:border-pink-200'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Servizi (come nei filtri avanzati)</p>
+                <div className="space-y-2">
+                  {SERVICE_FILTER_OPTIONS.map((service) => (
+                    <label
+                      key={service.key}
+                      className="flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2 text-sm text-gray-800"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData.services[service.key])}
+                        onChange={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            services: {
+                              ...prev.services,
+                              [service.key]: !prev.services[service.key],
+                            },
+                          }))
+                        }}
+                        className="rounded border-gray-300 text-pink-500 focus:ring-pink-400"
+                      />
+                      {service.label}
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>

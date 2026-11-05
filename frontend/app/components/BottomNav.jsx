@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Heart, User, Film, MessageCircle } from 'lucide-react'
+import { Home, Search, Heart, User, Film } from 'lucide-react'
+import { useInboxAlerts } from '../../lib/useInboxAlerts'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -22,6 +23,11 @@ export default function BottomNav() {
       }
     }
   }, [pathname])
+
+  const { totalUnread, hasAlerts, isLoggedIn: alertsLoggedIn } = useInboxAlerts({
+    active: true,
+    pollMs: 30000,
+  })
 
   const hiddenPaths = [
     '/auth',
@@ -78,11 +84,16 @@ export default function BottomNav() {
         {/* Menu/Profile */}
         <Link
           href="/menu"
-          className={`flex flex-col items-center justify-center w-16 h-full transition-colors ${
+          className={`relative flex flex-col items-center justify-center w-16 h-full transition-colors ${
             pathname === '/menu' ? 'text-pink-500' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           <User size={22} strokeWidth={pathname === '/menu' ? 2.5 : 2} />
+          {alertsLoggedIn && hasAlerts && (
+            <span className="absolute top-1 right-3 min-w-[16px] h-4 px-1 rounded-full bg-pink-500 text-[9px] font-bold text-white flex items-center justify-center">
+              {totalUnread > 9 ? '9+' : totalUnread}
+            </span>
+          )}
           <span className={`text-[10px] mt-0.5 ${pathname === '/menu' ? 'font-semibold' : ''}`}>
             Menu
           </span>

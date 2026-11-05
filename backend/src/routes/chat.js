@@ -5,6 +5,23 @@ const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// GET /api/chat/unread-count - Messaggi non letti per l'utente
+router.get('/unread-count', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const count = await prisma.message.count({
+      where: {
+        receiver_id: userId,
+        is_read: false,
+      },
+    });
+    res.json({ success: true, data: { count } });
+  } catch (error) {
+    console.error('Errore conteggio messaggi non letti:', error);
+    res.status(500).json({ success: false, error: 'Errore server' });
+  }
+});
+
 // GET /api/chat/conversations - Lista conversazioni
 router.get('/conversations', authenticate, async (req, res) => {
   try {
@@ -35,16 +52,33 @@ router.get('/conversations', authenticate, async (req, res) => {
       orderBy: { updated_at: 'desc' }
     });
 
-    const formatted = conversations.map(conv => {
+    const conversationIds = conversations.map((conv) => conv.id);
+    const unreadGrouped =
+      conversationIds.length === 0
+        ? []
+        : await prisma.message.groupBy({
+            by: ['conversation_id'],
+            where: {
+              conversation_id: { in: conversationIds },
+              receiver_id: userId,
+              is_read: false,
+            },
+            _count: { _all: true },
+          });
+    const unreadByConversation = Object.fromEntries(
+      unreadGrouped.map((row) => [row.conversation_id, row._count._all])
+    );
+
+    const formatted = conversations.map((conv) => {
       const otherUser = conv.user1_id === userId ? conv.user2 : conv.user1;
       const lastMessage = conv.messages[0] || null;
-      
+
       return {
         id: conv.id,
         other_user: otherUser,
         last_message: lastMessage,
-        unread_count: 0, // Calcolare separatamente
-        updated_at: conv.updated_at
+        unread_count: unreadByConversation[conv.id] || 0,
+        updated_at: conv.updated_at,
       };
     });
 

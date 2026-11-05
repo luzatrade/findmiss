@@ -8,11 +8,20 @@ import {
   Heart, FileText, Crown, MessageCircle, Bell, Shield,
   ArrowLeft, Loader2, LayoutDashboard
 } from 'lucide-react';
+import { useInboxAlerts } from '../../lib/useInboxAlerts';
+import MenuAlertsBanner from '../../components/MenuAlertsBanner';
+import UnreadBadge from '../../components/UnreadBadge';
 
 export default function MenuPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const {
+    unreadNotifications,
+    unreadMessages,
+    hasAlerts,
+    isLoggedIn: alertsLoggedIn,
+  } = useInboxAlerts({ active: true, pollMs: 30000 });
 
   useEffect(() => {
     // Check if user is logged in
@@ -39,9 +48,9 @@ export default function MenuPage() {
   const menuItems = user ? [
     { icon: FileText, label: 'I miei annunci', href: '/my-announcements', color: 'text-pink-500' },
     { icon: Heart, label: 'Preferiti', href: '/saved', color: 'text-red-500' },
-    { icon: MessageCircle, label: 'Messaggi', href: '/chat', color: 'text-blue-500' },
+    { icon: MessageCircle, label: 'Messaggi', href: '/chat', color: 'text-blue-500', badge: unreadMessages },
     { icon: CreditCard, label: 'Abbonamenti', href: '/payments', color: 'text-amber-500' },
-    { icon: Bell, label: 'Notifiche', href: '/settings', color: 'text-green-500' },
+    { icon: Bell, label: 'Notifiche', href: '/settings', color: 'text-green-500', badge: unreadNotifications },
     { icon: Settings, label: 'Impostazioni', href: '/settings', color: 'text-gray-500' },
     ...(user.role === 'admin'
       ? [{ icon: LayoutDashboard, label: 'Admin Panel', href: '/admin', color: 'text-indigo-500' }]
@@ -68,11 +77,23 @@ export default function MenuPage() {
           <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition">
             <ArrowLeft size={24} className="text-gray-700" />
           </Link>
-          <h1 className="text-xl font-bold text-gray-900">Menu</h1>
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            Menu
+            {user && alertsLoggedIn && hasAlerts && (
+              <UnreadBadge count={unreadNotifications + unreadMessages} />
+            )}
+          </h1>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        {user && (
+          <MenuAlertsBanner
+            unreadNotifications={unreadNotifications}
+            unreadMessages={unreadMessages}
+          />
+        )}
+
         {/* User Section */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
           {user ? (
@@ -158,7 +179,10 @@ export default function MenuPage() {
                   </div>
                   <span className="font-medium text-gray-900">{item.label}</span>
                 </div>
-                <ChevronRight size={20} className="text-gray-400" />
+                <div className="flex items-center gap-2">
+                  {item.badge > 0 && <UnreadBadge count={item.badge} />}
+                  <ChevronRight size={20} className="text-gray-400" />
+                </div>
               </Link>
             );
           })}

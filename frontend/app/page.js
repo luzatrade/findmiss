@@ -15,6 +15,7 @@ import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../lib/runtime-api'
 import { FALLBACK_ANNOUNCEMENTS } from '../lib/fallback-announcements'
 import { isDemoFallbackEnabled } from '../lib/demoMode'
 import { MEDIA_SIZES } from '../lib/media'
+import { useInboxAlerts } from '../lib/useInboxAlerts'
 
 // Nuove categorie
 const CATEGORIES = [
@@ -41,6 +42,10 @@ export default function HomePage() {
   const [announcements, setAnnouncements] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState(null)
+  const { totalUnread, hasAlerts, isLoggedIn: alertsLoggedIn } = useInboxAlerts({
+    active: true,
+    pollMs: 30000,
+  })
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -247,18 +252,28 @@ export default function HomePage() {
             <NotificationsBell />
             <button
               onClick={() => setShowMenuModal(true)}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
+              className="relative p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
               aria-label="Apri menu"
             >
               <Menu size={22} />
+              {alertsLoggedIn && hasAlerts && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-pink-500 text-[9px] font-bold text-white flex items-center justify-center">
+                  {totalUnread > 9 ? '9+' : totalUnread}
+                </span>
+              )}
             </button>
           </div>
           <button
             onClick={() => setShowMenuModal(true)}
-            className="sm:hidden p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
+            className="relative sm:hidden p-2 rounded-full hover:bg-gray-100 text-gray-700 transition"
             aria-label="Apri menu"
           >
             <Menu size={22} />
+            {alertsLoggedIn && hasAlerts && (
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-pink-500 text-[9px] font-bold text-white flex items-center justify-center">
+                {totalUnread > 9 ? '9+' : totalUnread}
+              </span>
+            )}
           </button>
         </div>
       </div>

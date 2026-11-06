@@ -95,8 +95,9 @@ export function buildFilterProfilePayload(formData) {
   }
 }
 
-export function isFilterProfileIncomplete(announcement) {
-  const p = profileFromAnnouncement(announcement)
+export function isAdvertiserSearchProfileIncomplete(profile) {
+  if (!profile || typeof profile !== 'object') return true
+  const p = profileFromAnnouncement(profile)
   const hasService = Object.values(p.services).some(Boolean)
   return !p.hair_color || !p.eye_color || !p.cup_size || !hasService
 }

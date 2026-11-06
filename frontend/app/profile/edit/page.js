@@ -5,8 +5,31 @@ import Link from 'next/link'
 import { ArrowLeft, Camera, Loader2, Save, AlertCircle, User, Mail, Phone, Lock } from 'lucide-react'
 
 import { getApiUrl } from '../../../lib/runtime-api'
+import AdvertiserFilterProfileFields from '../../../components/AdvertiserFilterProfileFields'
+import { buildFilterProfilePayload } from '../../../lib/announcementFilterProfile'
+import { DEFAULT_SERVICE_FLAGS } from '../../../lib/filterFieldOptions'
 
 const API_URL = getApiUrl()
+
+const emptySearchProfileForm = () => ({
+  height: '',
+  weight: '',
+  hair_color: '',
+  eye_color: '',
+  cup_size: '',
+  ethnicity: '',
+  nationality: '',
+  language: '',
+  body_type: '',
+  smoker: false,
+  speaks_english: false,
+  has_tattoos: false,
+  has_piercings: false,
+  is_available_now: false,
+  available_overnight: false,
+  available_for: [],
+  services: { ...DEFAULT_SERVICE_FLAGS },
+})
 
 export default function EditProfilePage() {
   const router = useRouter()
@@ -15,12 +38,14 @@ export default function EditProfilePage() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
   
+  const [userRole, setUserRole] = useState('user')
   const [formData, setFormData] = useState({
     nickname: '',
     email: '',
     phone: '',
     bio: '',
   })
+  const [searchProfile, setSearchProfile] = useState(() => emptySearchProfileForm())
   
   const [passwordData, setPasswordData] = useState({
     current: '',
@@ -35,24 +60,69 @@ export default function EditProfilePage() {
       router.push('/auth?redirect=/profile/edit')
       return
     }
-    
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
+
+    const load = async () => {
+      const storedUser = localStorage.getItem('user')
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser)
+          setUserRole(user.role || 'user')
+          setFormData({
+            nickname: user.nickname || '',
+            email: user.email || '',
+            phone: user.phone || '',
+            bio: user.bio || '',
+          })
+        } catch {}
+      }
+
       try {
-        const user = JSON.parse(storedUser)
-        setFormData({
-          nickname: user.nickname || '',
-          email: user.email || '',
-          phone: user.phone || '',
-          bio: user.bio || '',
+        const res = await fetch(`${API_URL}/users/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
         })
-      } catch {}
+        const data = await res.json()
+        if (data.success && data.data) {
+          const u = data.data
+          setUserRole(u.role || 'user')
+          setFormData((prev) => ({
+            ...prev,
+            nickname: u.nickname ?? prev.nickname,
+            email: u.email ?? prev.email,
+            phone: u.phone ?? prev.phone,
+            bio: u.bio ?? prev.bio,
+          }))
+          if (u.advertiser_search_profile && typeof u.advertiser_search_profile === 'object') {
+            setSearchProfile({
+              ...emptySearchProfileForm(),
+              ...u.advertiser_search_profile,
+              services: {
+                ...DEFAULT_SERVICE_FLAGS,
+                ...(u.advertiser_search_profile.services || {}),
+              },
+              available_for: Array.isArray(u.advertiser_search_profile.available_for)
+                ? u.advertiser_search_profile.available_for
+                : [],
+            })
+          }
+        }
+      } catch {
+        // keep localStorage fallback
+      } finally {
+        setLoading(false)
+      }
     }
-    setLoading(false)
+
+    load()
   }, [])
 
   const updateField = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }))
+    setError(null)
+    setSuccess(false)
+  }
+
+  const updateSearchField = (name, value) => {
+    setSearchProfile((prev) => ({ ...prev, [name]: value }))
     setError(null)
     setSuccess(false)
   }
@@ -64,13 +134,21 @@ export default function EditProfilePage() {
     try {
       const token = localStorage.getItem('token')
       
+      const body =
+        userRole === 'advertiser'
+          ? {
+              ...formData,
+              advertiser_search_profile: buildFilterProfilePayload(searchProfile),
+            }
+          : { ...formData }
+
       const res = await fetch(`${API_URL}/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(body)
       })
       
       const data = await res.json()
@@ -79,6 +157,9 @@ export default function EditProfilePage() {
         // Aggiorna localStorage
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
         const updatedUser = { ...storedUser, ...formData }
+        if (data.data?.advertiser_search_profile) {
+          updatedUser.advertiser_search_profile = data.data.advertiser_search_profile
+        }
         localStorage.setItem('user', JSON.stringify(updatedUser))
         setSuccess(true)
       } else {
@@ -195,6 +276,23 @@ export default function EditProfilePage() {
             <p className="text-sm text-gray-500">Clicca per cambiare foto</p>
           </div>
         </section>
+
+        {userRole === 'advertiser' && (
+          <section className="bg-white rounded-2xl border border-pink-200 p-5 shadow-sm space-y-4 ring-1 ring-pink-100">
+            <div>
+              <h2 className="font-semibold text-gray-900">Profilo per ricerca (filtri visitatore)</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Questi dati valgono per <strong>tutti i tuoi annunci</strong>. Salvi qui una volta sola:
+                vengono applicati automaticamente a ogni annuncio e aggiornano anche quelli già pubblicati.
+              </p>
+            </div>
+            <AdvertiserFilterProfileFields
+              formData={searchProfile}
+              updateField={updateSearchField}
+              setFormData={setSearchProfile}
+            />
+          </section>
+        )}
 
         {/* Info */}
         <section className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-4">

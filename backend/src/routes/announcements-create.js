@@ -1,6 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
+const { mergeCreateDataWithUserProfile } = require('../services/advertiserSearchProfile');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -44,40 +45,44 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Titolo e categoria richiesti' });
     }
 
+    const createData = {
+      user_id: userId,
+      category_id,
+      city_id: city_id || null,
+      title,
+      description: description || null,
+      stage_name: stage_name || null,
+      age: age ? parseInt(age) : null,
+      height: height ? parseInt(height) : null,
+      weight: weight ? parseInt(weight) : null,
+      hair_color: hair_color || null,
+      hair_length: hair_length || null,
+      eye_color: eye_color || null,
+      ethnicity: ethnicity || null,
+      cup_size: cup_size || null,
+      language: language || null,
+      nationality: nationality || null,
+      smoker: smoker !== undefined ? smoker : null,
+      price_30min: price_30min ? parseFloat(price_30min) : null,
+      price_1hour: price_1hour ? parseFloat(price_1hour) : null,
+      price_2hour: price_2hour ? parseFloat(price_2hour) : null,
+      price_night: price_night ? parseFloat(price_night) : null,
+      price_videochat: price_videochat ? parseFloat(price_videochat) : null,
+      is_available_now: is_available_now || false,
+      available_overnight: available_overnight || false,
+      working_hours_start: working_hours_start || null,
+      working_hours_end: working_hours_end || null,
+      available_for: available_for ? JSON.stringify(available_for) : null,
+      services: services ? JSON.stringify(services) : null,
+      phone_visible: phone_visible !== undefined ? phone_visible : true,
+      status:
+        process.env.ANNOUNCEMENTS_AUTO_APPROVE === 'true' ? 'active' : 'pending',
+    };
+
+    const mergedData = await mergeCreateDataWithUserProfile(prisma, userId, createData);
+
     const announcement = await prisma.announcement.create({
-      data: {
-        user_id: userId,
-        category_id,
-        city_id: city_id || null,
-        title,
-        description: description || null,
-        stage_name: stage_name || null,
-        age: age ? parseInt(age) : null,
-        height: height ? parseInt(height) : null,
-        weight: weight ? parseInt(weight) : null,
-        hair_color: hair_color || null,
-        hair_length: hair_length || null,
-        eye_color: eye_color || null,
-        ethnicity: ethnicity || null,
-        cup_size: cup_size || null,
-        language: language || null,
-        nationality: nationality || null,
-        smoker: smoker !== undefined ? smoker : null,
-        price_30min: price_30min ? parseFloat(price_30min) : null,
-        price_1hour: price_1hour ? parseFloat(price_1hour) : null,
-        price_2hour: price_2hour ? parseFloat(price_2hour) : null,
-        price_night: price_night ? parseFloat(price_night) : null,
-        price_videochat: price_videochat ? parseFloat(price_videochat) : null,
-        is_available_now: is_available_now || false,
-        available_overnight: available_overnight || false,
-        working_hours_start: working_hours_start || null,
-        working_hours_end: working_hours_end || null,
-        available_for: available_for ? JSON.stringify(available_for) : null,
-        services: services ? JSON.stringify(services) : null,
-        phone_visible: phone_visible !== undefined ? phone_visible : true,
-        status:
-          process.env.ANNOUNCEMENTS_AUTO_APPROVE === 'true' ? 'active' : 'pending',
-      },
+      data: mergedData,
       include: {
         category: true,
         city: true

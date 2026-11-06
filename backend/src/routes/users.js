@@ -2,6 +2,7 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const { authenticate } = require('../middleware/auth');
+const { syncAnnouncementsWithUserProfile } = require('../services/advertiserSearchProfile');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -19,6 +20,7 @@ router.get('/profile', authenticate, async (req, res) => {
         role: true,
         avatar_url: true,
         bio: true,
+        advertiser_search_profile: true,
         is_verified: true,
         created_at: true,
         _count: {
@@ -44,7 +46,7 @@ router.get('/profile', authenticate, async (req, res) => {
 // PUT /api/users/profile - Update current user profile
 router.put('/profile', authenticate, async (req, res) => {
   try {
-    const { nickname, email, phone, bio } = req.body;
+    const { nickname, email, phone, bio, advertiser_search_profile } = req.body;
 
     // Check if email is taken
     if (email && email !== req.user.email) {
@@ -56,14 +58,23 @@ router.put('/profile', authenticate, async (req, res) => {
       }
     }
 
+    const data = {
+      ...(nickname !== undefined && { nickname }),
+      ...(email && { email }),
+      ...(phone !== undefined && { phone }),
+      ...(bio !== undefined && { bio }),
+    };
+
+    if (
+      advertiser_search_profile !== undefined &&
+      (req.user.role === 'advertiser' || req.user.role === 'admin')
+    ) {
+      data.advertiser_search_profile = advertiser_search_profile;
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
-      data: {
-        ...(nickname && { nickname }),
-        ...(email && { email }),
-        ...(phone !== undefined && { phone }),
-        ...(bio !== undefined && { bio }),
-      },
+      data,
       select: {
         id: true,
         email: true,
@@ -72,8 +83,13 @@ router.put('/profile', authenticate, async (req, res) => {
         role: true,
         avatar_url: true,
         bio: true,
+        advertiser_search_profile: true,
       }
     });
+
+    if (req.user.role === 'advertiser' && advertiser_search_profile !== undefined) {
+      await syncAnnouncementsWithUserProfile(prisma, req.user.id, advertiser_search_profile);
+    }
 
     res.json({ success: true, data: updatedUser });
   } catch (error) {

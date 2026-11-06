@@ -12,7 +12,7 @@ import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-a
 import OptimizedImage from '../../components/OptimizedImage'
 import { MEDIA_SIZES, validateMediaFile } from '../../lib/media'
 import { deleteReelMedia, uploadReelToAnnouncement } from '../../lib/reelMedia'
-import { isFilterProfileIncomplete } from '../../lib/announcementFilterProfile'
+import { isAdvertiserSearchProfileIncomplete } from '../../lib/announcementFilterProfile'
 
 const API_URL = getApiUrl()
 
@@ -29,6 +29,7 @@ export default function MyAnnouncementsPage() {
   const [reelUploadTarget, setReelUploadTarget] = useState(null)
   const [reelBusyId, setReelBusyId] = useState(null)
   const reelFileInputRef = useRef(null)
+  const [searchProfileIncomplete, setSearchProfileIncomplete] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -37,6 +38,29 @@ export default function MyAnnouncementsPage() {
       return
     }
     fetchMyAnnouncements()
+  }, [])
+
+  useEffect(() => {
+    const loadAdvertiserSearchProfile = async () => {
+      const token = localStorage.getItem('token')
+      if (!token) return
+      try {
+        const res = await fetch(`${API_URL}/users/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (data.success && data.data?.role === 'advertiser') {
+          setSearchProfileIncomplete(
+            isAdvertiserSearchProfileIncomplete(data.data.advertiser_search_profile)
+          )
+        } else {
+          setSearchProfileIncomplete(false)
+        }
+      } catch {
+        setSearchProfileIncomplete(false)
+      }
+    }
+    loadAdvertiserSearchProfile()
   }, [])
 
   const fetchMyAnnouncements = async () => {
@@ -260,11 +284,14 @@ export default function MyAnnouncementsPage() {
       </header>
 
       <div className="max-w-6xl mx-auto p-4 space-y-6">
-        {announcements.some(isFilterProfileIncomplete) && (
+        {searchProfileIncomplete && (
           <div className="bg-purple-50 border border-purple-200 text-purple-900 rounded-xl p-4 text-sm">
             Per comparire nei <strong>filtri di ricerca</strong> (capelli, servizi, disponibilità, ecc.),
-            apri <strong>Modifica</strong> su ogni annuncio e compila la sezione{' '}
-            <strong>Profilo per ricerca (filtri visitatore)</strong>.
+            vai su{' '}
+            <Link href="/profile/edit" className="font-semibold text-pink-600 underline">
+              Modifica profilo
+            </Link>{' '}
+            e compila <strong>Profilo per ricerca</strong> (una volta sola per tutti gli annunci).
           </div>
         )}
 
@@ -458,16 +485,8 @@ export default function MyAnnouncementsPage() {
                         </Link>
                         <Link
                           href={`/announcements/${announcement.id}/edit`}
-                          className={`p-2 rounded-full hover:bg-blue-200 transition ${
-                            isFilterProfileIncomplete(announcement)
-                              ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-300'
-                              : 'bg-blue-100 text-blue-600'
-                          }`}
-                          title={
-                            isFilterProfileIncomplete(announcement)
-                              ? 'Completa profilo per i filtri di ricerca'
-                              : 'Modifica'
-                          }
+                          className="p-2 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition"
+                          title="Modifica annuncio"
                         >
                           <Edit size={18} />
                         </Link>

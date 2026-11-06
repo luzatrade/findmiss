@@ -8,13 +8,6 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../../lib/runtime-api'
-import AdvertiserFilterProfileFields from '../../../../components/AdvertiserFilterProfileFields'
-import {
-  buildFilterProfilePayload,
-  profileFromAnnouncement,
-} from '../../../../lib/announcementFilterProfile'
-import { DEFAULT_SERVICE_FLAGS } from '../../../../lib/filterFieldOptions'
-
 const API_URL = getApiUrl()
 
 async function uploadAnnouncementMedia(token, announcementId, files) {
@@ -58,23 +51,6 @@ export default function EditAnnouncementPage({ params }) {
     price_1hour: '',
     price_2hour: '',
     price_night: '',
-    height: '',
-    weight: '',
-    hair_color: '',
-    eye_color: '',
-    cup_size: '',
-    ethnicity: '',
-    nationality: '',
-    language: '',
-    body_type: '',
-    smoker: false,
-    speaks_english: false,
-    has_tattoos: false,
-    has_piercings: false,
-    is_available_now: false,
-    available_overnight: false,
-    available_for: [],
-    services: { ...DEFAULT_SERVICE_FLAGS },
     working_hours_start: '10:00',
     working_hours_end: '22:00',
     status: 'active',
@@ -116,7 +92,6 @@ export default function EditAnnouncementPage({ params }) {
       
       if (announcementData.success && announcementData.data) {
         const a = announcementData.data
-        const profile = profileFromAnnouncement(a)
         setFormData({
           title: a.title || '',
           stage_name: a.stage_name || '',
@@ -131,7 +106,6 @@ export default function EditAnnouncementPage({ params }) {
           working_hours_start: a.working_hours_start || '10:00',
           working_hours_end: a.working_hours_end || '22:00',
           status: a.status || 'active',
-          ...profile,
         })
         setExistingMedia(a.media || [])
       } else {
@@ -202,7 +176,6 @@ export default function EditAnnouncementPage({ params }) {
           price_night: formData.price_night ? Number(formData.price_night) : null,
           working_hours_start: formData.working_hours_start,
           working_hours_end: formData.working_hours_end,
-          ...buildFilterProfilePayload(formData),
         })
       })
       
@@ -453,12 +426,17 @@ export default function EditAnnouncementPage({ params }) {
           </div>
         </section>
 
-        <section className="bg-white rounded-2xl border border-pink-200 p-5 shadow-sm space-y-4 ring-1 ring-pink-100">
-          <AdvertiserFilterProfileFields
-            formData={formData}
-            updateField={updateField}
-            setFormData={setFormData}
-          />
+        <section className="bg-purple-50 rounded-2xl border border-purple-200 p-5 text-sm text-purple-900">
+          <p className="font-semibold text-purple-950">Filtri di ricerca (capelli, servizi, ecc.)</p>
+          <p className="mt-1 text-purple-800/90">
+            Si impostano <strong>una sola volta</strong> nel tuo profilo, non su ogni annuncio.
+          </p>
+          <Link
+            href="/profile/edit"
+            className="inline-flex mt-3 text-pink-600 font-semibold hover:underline"
+          >
+            Apri Modifica profilo
+          </Link>
         </section>
 
         {/* Orari */}

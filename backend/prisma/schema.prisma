@@ -20,6 +20,8 @@ model User {
   role          String    @default("user")
   phone         String?
   phone_visible Boolean   @default(true)
+  /// Profilo ricerca visitatore (JSON): capelli, servizi, disponibilità, ecc. — una volta per inserzionista, applicato agli annunci.
+  advertiser_search_profile Json?
   is_active     Boolean   @default(true)
   is_verified   Boolean   @default(false)
   ghost_mode    Boolean   @default(false)

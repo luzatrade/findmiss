@@ -11,9 +11,6 @@ import {
 import { getApiUrl } from '../../../lib/runtime-api'
 import { validateMediaFile } from '../../../lib/media'
 import CityPickerField from '../../../components/CityPickerField'
-import AdvertiserFilterProfileFields from '../../../components/AdvertiserFilterProfileFields'
-import { buildFilterProfilePayload } from '../../../lib/announcementFilterProfile'
-import { DEFAULT_SERVICE_FLAGS } from '../../../lib/filterFieldOptions'
 
 const API_URL = getApiUrl()
 
@@ -64,23 +61,6 @@ export default function NewAnnouncementPage() {
     price_2hour: '',
     price_night: '',
     price_videochat: '',
-    height: '',
-    weight: '',
-    hair_color: '',
-    eye_color: '',
-    cup_size: '',
-    ethnicity: '',
-    nationality: '',
-    language: '',
-    body_type: '',
-    smoker: false,
-    speaks_english: false,
-    has_tattoos: false,
-    has_piercings: false,
-    is_available_now: false,
-    available_overnight: false,
-    available_for: [],
-    services: { ...DEFAULT_SERVICE_FLAGS },
     working_hours_start: '10:00',
     working_hours_end: '22:00',
   })
@@ -286,7 +266,6 @@ export default function NewAnnouncementPage() {
           price_videochat: formData.price_videochat ? Number(formData.price_videochat) : null,
           working_hours_start: formData.working_hours_start,
           working_hours_end: formData.working_hours_end,
-          ...buildFilterProfilePayload(formData),
         })
       })
 
@@ -543,7 +522,15 @@ export default function NewAnnouncementPage() {
           <div className="space-y-6">
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-2">Prezzi e dettagli</h2>
-              <p className="text-gray-500 text-sm">Imposta le tue tariffe e caratteristiche</p>
+              <p className="text-gray-500 text-sm">Imposta le tue tariffe e orari.</p>
+              <p className="text-xs text-gray-500 mt-2">
+                Capelli, servizi e disponibilità per i <strong>filtri di ricerca</strong> si impostano una
+                sola volta in{' '}
+                <Link href="/profile/edit" className="text-pink-600 font-medium hover:underline">
+                  Modifica profilo
+                </Link>
+                .
+              </p>
             </div>
             
             {/* Prezzi */}
@@ -610,14 +597,6 @@ export default function NewAnnouncementPage() {
                   />
                 </div>
               )}
-            </div>
-
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
-              <AdvertiserFilterProfileFields
-                formData={formData}
-                updateField={updateField}
-                setFormData={setFormData}
-              />
             </div>
 
             {/* Orari */}

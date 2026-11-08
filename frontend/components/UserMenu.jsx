@@ -5,7 +5,7 @@ import { buildAuthHref } from '../lib/authRedirect'
 import Link from 'next/link'
 import { 
   X, User, Heart, Bell, Settings, HelpCircle, LogOut, LogIn, UserPlus, 
-  Briefcase, MessageCircle, CreditCard, Shield, Play
+  Briefcase, MessageCircle, CreditCard, Shield, Play, Circle
 } from 'lucide-react'
 import { useInboxAlerts } from '../lib/useInboxAlerts'
 import MenuAlertsBanner from './MenuAlertsBanner'
@@ -219,6 +219,19 @@ export default function UserMenu({ isOpen, onClose }) {
                 <Play size={24} className="text-purple-500" />
                 <span className="text-gray-900 font-medium">Guarda reels</span>
               </button>
+
+              {(user?.role === 'advertiser' || user?.role === 'admin') && (
+                <button
+                  onClick={() => handleNavigation('/stories/create')}
+                  className="w-full bg-gray-50 hover:bg-gray-100 p-4 rounded-xl flex items-center gap-4 transition"
+                >
+                  <Circle size={24} className="text-pink-500" />
+                  <div className="text-left">
+                    <span className="text-gray-900 font-medium block">Pubblica storia</span>
+                    <span className="text-xs text-gray-500">Visibile 24 ore · eliminabile quando vuoi</span>
+                  </div>
+                </button>
+              )}
 
               <button 
                 onClick={() => handleNavigation('/reels?upload=1')}

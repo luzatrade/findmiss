@@ -1,6 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate, optionalAuth } = require('../middleware/auth');
+const { authenticate, optionalAuth, requireAdvertiser } = require('../middleware/auth');
 const { getFallbackStories } = require('../data/fallbackData');
 
 const router = express.Router();
@@ -11,7 +11,11 @@ router.get('/', async (req, res) => {
   try {
     const now = new Date();
 
-    // Raggruppa storie per utente
+    await prisma.story.updateMany({
+      where: { expires_at: { lte: now }, is_active: true },
+      data: { is_active: false },
+    });
+
     const stories = await prisma.story.findMany({
       where: {
         is_active: true,
@@ -42,8 +46,9 @@ router.get('/', async (req, res) => {
       const userId = story.user_id;
       if (!acc[userId]) {
         acc[userId] = {
+          user_id: userId,
           user: story.user,
-          stories: []
+          stories: [],
         };
       }
       acc[userId].stories.push(story);
@@ -95,8 +100,30 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
+// GET /api/stories/me - Le mie storie attive (per barra / gestione)
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const now = new Date();
+    const userId = req.user.id;
+
+    const stories = await prisma.story.findMany({
+      where: {
+        user_id: userId,
+        is_active: true,
+        expires_at: { gt: now },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    res.json({ success: true, data: stories });
+  } catch (error) {
+    console.error('Errore storie utente corrente:', error);
+    res.status(500).json({ success: false, error: 'Errore server' });
+  }
+});
+
 // POST /api/stories - Crea storia
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, requireAdvertiser, async (req, res) => {
   try {
     const userId = req.user.id;
     const { type, media_url, thumbnail_url, duration, announcement_id } = req.body;
@@ -108,14 +135,22 @@ router.post('/', authenticate, async (req, res) => {
       });
     }
 
-    // Scadenza 24h
-    const expires_at = new Date();
-    expires_at.setHours(expires_at.getHours() + 24);
+    let linkedAnnouncementId = announcement_id || null;
+    if (!linkedAnnouncementId) {
+      const latest = await prisma.announcement.findFirst({
+        where: { user_id: userId, status: 'active' },
+        orderBy: { updated_at: 'desc' },
+        select: { id: true },
+      });
+      linkedAnnouncementId = latest?.id || null;
+    }
+
+    const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const story = await prisma.story.create({
       data: {
         user_id: userId,
-        announcement_id,
+        announcement_id: linkedAnnouncementId,
         type,
         media_url,
         thumbnail_url,

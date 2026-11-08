@@ -1,4 +1,4 @@
-import { upload } from '@vercel/blob/client'
+import { uploadPresigned } from '@vercel/blob/client'
 import { getApiUrl } from './runtime-api'
 import { normalizeUploadFile } from './normalizeUploadFile'
 
@@ -53,10 +53,11 @@ async function uploadFileToVercelBlob(token, file) {
   const pathname = `findmiss/${userId}/${folder}/${Date.now()}-${safeFilename(file.name)}`
 
   try {
-    const blob = await upload(pathname, file, {
+    const blob = await uploadPresigned(pathname, file, {
       access: 'public',
       handleUploadUrl: '/api/media/upload',
       clientPayload: JSON.stringify({ token }),
+      multipart: Boolean(file.size && file.size > 4.5 * 1024 * 1024),
     })
     return blob
   } catch (error) {

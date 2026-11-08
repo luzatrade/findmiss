@@ -465,36 +465,47 @@ export default function MyAnnouncementsPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
+                          type="button"
                           onClick={() => handleToggleStatus(announcement.id, announcement.status)}
-                          className={`p-2 rounded-full transition ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
                             announcement.status === 'active'
-                              ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200'
-                              : 'bg-green-100 text-green-600 hover:bg-green-200'
+                              ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                              : 'bg-green-100 text-green-700 hover:bg-green-200'
                           }`}
-                          title={announcement.status === 'active' ? 'Metti in pausa' : 'Attiva'}
                         >
-                          {announcement.status === 'active' ? <Pause size={18} /> : <Play size={18} />}
+                          {announcement.status === 'active' ? (
+                            <>
+                              <Pause size={16} aria-hidden />
+                              In pausa
+                            </>
+                          ) : (
+                            <>
+                              <Play size={16} aria-hidden />
+                              Attiva
+                            </>
+                          )}
                         </button>
                         <Link
                           href={`/profile/${announcement.id}`}
-                          className="p-2 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition"
-                          title="Visualizza"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
                         >
-                          <Eye size={18} />
+                          <Eye size={16} aria-hidden />
+                          Visualizza
                         </Link>
                         <Link
                           href={`/announcements/${announcement.id}/edit`}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition"
-                          title="Modifica annuncio"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition"
                         >
-                          <Edit size={18} />
+                          <Edit size={16} aria-hidden />
+                          Modifica
                         </Link>
                         <button
+                          type="button"
                           onClick={() => setShowDeleteModal(announcement.id)}
                           className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition"
-                          title="Elimina"
+                          aria-label="Elimina annuncio"
                         >
                           <Trash2 size={18} />
                         </button>

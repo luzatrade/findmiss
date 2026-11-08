@@ -1,39 +1,14 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { X, ChevronLeft, ChevronRight, Heart, MessageCircle, Send, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import {
+  X, ChevronLeft, ChevronRight, Heart, MessageCircle, Send, Pause, Play, Volume2, VolumeX, Trash2,
+} from 'lucide-react'
 
 import { getApiUrl, toAbsoluteMediaUrl } from '../../lib/runtime-api'
 import { buildAuthHref } from '../../lib/authRedirect'
 
 const API_URL = getApiUrl()
-
-const DEMO_STORIES = [
-  {
-    user_id: '1',
-    user: { id: '1', nickname: 'Sofia', avatar_url: null },
-    stories: [
-      { id: '1', type: 'image', url: 'https://picsum.photos/400/700?random=s1', created_at: new Date().toISOString(), duration: 5 },
-      { id: '2', type: 'image', url: 'https://picsum.photos/400/700?random=s2', created_at: new Date().toISOString(), duration: 5 },
-    ]
-  },
-  {
-    user_id: '2',
-    user: { id: '2', nickname: 'Valentina', avatar_url: null },
-    stories: [
-      { id: '3', type: 'image', url: 'https://picsum.photos/400/700?random=s3', created_at: new Date().toISOString(), duration: 5 },
-    ]
-  },
-  {
-    user_id: '3',
-    user: { id: '3', nickname: 'Giulia', avatar_url: null },
-    stories: [
-      { id: '4', type: 'image', url: 'https://picsum.photos/400/700?random=s4', created_at: new Date().toISOString(), duration: 5 },
-      { id: '5', type: 'image', url: 'https://picsum.photos/400/700?random=s5', created_at: new Date().toISOString(), duration: 5 },
-      { id: '6', type: 'image', url: 'https://picsum.photos/400/700?random=s6', created_at: new Date().toISOString(), duration: 5 },
-    ]
-  },
-]
 
 const normalizeStories = (groups = []) => {
   return groups
@@ -47,6 +22,7 @@ const normalizeStories = (groups = []) => {
           created_at: story.created_at || new Date().toISOString(),
           duration: Number(story.duration || (story.type === 'video' ? 15 : 5)),
           announcement_id: story.announcement_id || story.announcement?.id || null,
+          expires_at: story.expires_at || null,
         }))
         .filter((story) => Boolean(story.url))
 
@@ -80,11 +56,19 @@ export default function StoriesPage() {
   const [showReply, setShowReply] = useState(false)
   const [isSendingReply, setIsSendingReply] = useState(false)
   const [replyError, setReplyError] = useState('')
+  const [viewerUserId, setViewerUserId] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const progressInterval = useRef(null)
   const videoRef = useRef(null)
 
   useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}')
+      setViewerUserId(u.id || null)
+    } catch {
+      setViewerUserId(null)
+    }
     loadStories()
     return () => {
       if (progressInterval.current) clearInterval(progressInterval.current)
@@ -98,19 +82,22 @@ export default function StoriesPage() {
 
       if (data.success && data.data?.length > 0) {
         const normalized = normalizeStories(data.data)
-        const finalStories = normalized.length > 0 ? normalized : DEMO_STORIES
-        setStories(finalStories)
+        setStories(normalized)
 
         if (startUserId) {
-          const idx = finalStories.findIndex((s) => String(s.user_id) === String(startUserId) || String(s.user?.id) === String(startUserId))
+          const idx = normalized.findIndex(
+            (s) =>
+              String(s.user_id) === String(startUserId) ||
+              String(s.user?.id) === String(startUserId)
+          )
           if (idx >= 0) setCurrentUserIndex(idx)
         }
       } else {
-        setStories(DEMO_STORIES)
+        setStories([])
       }
     } catch (error) {
       console.error('Errore caricamento stories:', error)
-      setStories(DEMO_STORIES)
+      setStories([])
     } finally {
       setLoading(false)
     }
@@ -206,6 +193,68 @@ export default function StoriesPage() {
     }
   }
 
+  const deleteCurrentStory = async () => {
+    const activeStory = stories[currentUserIndex]?.stories?.[currentStoryIndex]
+    if (!activeStory?.id || isDeleting) return
+
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push(buildAuthHref({ redirect: '/stories' }))
+      return
+    }
+
+    if (!window.confirm('Eliminare questa storia? Sparirà subito dal feed.')) return
+
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`${API_URL}/stories/${activeStory.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Eliminazione non riuscita')
+      }
+
+      setStories((prev) => {
+        const next = prev
+          .map((group, gIdx) => {
+            if (gIdx !== currentUserIndex) return group
+            const filtered = group.stories.filter((_, sIdx) => sIdx !== currentStoryIndex)
+            return { ...group, stories: filtered }
+          })
+          .filter((group) => group.stories.length > 0)
+
+        if (next.length === 0) {
+          router.push('/')
+          return next
+        }
+
+        if (currentStoryIndex >= (next[currentUserIndex]?.stories?.length || 0)) {
+          setCurrentStoryIndex(Math.max(0, (next[currentUserIndex]?.stories?.length || 1) - 1))
+        }
+        if (currentUserIndex >= next.length) {
+          setCurrentUserIndex(Math.max(0, next.length - 1))
+        }
+        return next
+      })
+    } catch (error) {
+      alert(error.message || 'Errore eliminazione storia')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const formatExpiresLabel = (expiresAt) => {
+    if (!expiresAt) return '24h dal post'
+    const diff = new Date(expiresAt).getTime() - Date.now()
+    if (diff <= 0) return 'Scaduta'
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    if (hours > 0) return `Scade tra ${hours}h ${mins}m`
+    return `Scade tra ${mins} min`
+  }
+
   const sendReply = async () => {
     if (!replyText.trim() || isSendingReply) return
 
@@ -275,11 +324,14 @@ export default function StoriesPage() {
 
   if (stories.length === 0) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
-        <div className="text-center">
-          <p className="text-xl mb-4">Nessuna storia disponibile</p>
-          <button onClick={() => router.back()} className="text-pink-500">
-            Torna indietro
+      <div className="min-h-screen bg-black flex items-center justify-center text-white p-6">
+        <div className="text-center max-w-sm">
+          <p className="text-xl mb-2">Nessuna storia attiva</p>
+          <p className="text-white/60 text-sm mb-6">
+            Le storie degli inserzionisti durano 24 ore. Se sei inserzionista, pubblicane una dalla home (bollino &quot;Nuova&quot;).
+          </p>
+          <button type="button" onClick={() => router.push('/')} className="text-pink-400 font-medium">
+            Torna alla home
           </button>
         </div>
       </div>
@@ -288,6 +340,9 @@ export default function StoriesPage() {
 
   const currentUser = stories[currentUserIndex]
   const currentStory = currentUser?.stories[currentStoryIndex]
+  const isOwnStory =
+    viewerUserId &&
+    String(currentUser?.user_id || currentUser?.user?.id) === String(viewerUserId)
 
   return (
     <div className="fixed inset-0 bg-black z-50">
@@ -314,11 +369,29 @@ export default function StoriesPage() {
           <div>
             <p className="text-white font-semibold">{currentUser?.user?.nickname || 'Utente'}</p>
             <p className="text-white/60 text-xs">
-              {new Date(currentStory?.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+              {formatExpiresLabel(currentStory?.expires_at)} ·{' '}
+              {new Date(currentStory?.created_at).toLocaleTimeString('it-IT', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isOwnStory && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                deleteCurrentStory()
+              }}
+              disabled={isDeleting}
+              className="p-2 text-white hover:bg-white/10 rounded-full"
+              title="Elimina questa storia"
+            >
+              <Trash2 size={22} />
+            </button>
+          )}
           <button
             onClick={() => setIsPaused(!isPaused)}
             className="p-2 text-white"

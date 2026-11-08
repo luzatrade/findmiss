@@ -166,7 +166,17 @@ export default function CreateStoryPage() {
       const storyData = await storyRes.json()
       
       if (storyData.success) {
-        router.push('/')
+        let userId = null
+        try {
+          userId = JSON.parse(localStorage.getItem('user') || '{}').id
+        } catch {
+          userId = null
+        }
+        if (userId) {
+          router.push(`/stories?user=${userId}`)
+        } else {
+          router.push('/')
+        }
       } else {
         throw new Error(storyData.error || 'Errore creazione storia')
       }

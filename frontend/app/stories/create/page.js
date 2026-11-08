@@ -14,6 +14,7 @@ const API_URL = getApiUrl()
 export default function CreateStoryPage() {
   const router = useRouter()
   const fileInputRef = useRef(null)
+  const cameraCaptureInputRef = useRef(null)
   const videoRef = useRef(null)
   
   const [user, setUser] = useState(null)
@@ -58,33 +59,66 @@ export default function CreateStoryPage() {
         }
       }
     })
-    
+  }, [router])
+
+  useEffect(() => {
     return () => {
       if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop())
+        cameraStream.getTracks().forEach((track) => track.stop())
       }
     }
-  }, [])
+  }, [cameraStream])
+
+  useEffect(() => {
+    if (step !== 'camera' || !cameraStream || !videoRef.current) return
+
+    const video = videoRef.current
+    video.srcObject = cameraStream
+    video.setAttribute('playsinline', 'true')
+    video.muted = true
+    const play = video.play()
+    if (play) {
+      play.catch(() => {})
+    }
+  }, [step, cameraStream])
 
   const startCamera = async () => {
+    setError(null)
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      cameraCaptureInputRef.current?.click()
+      return
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: false
+        video: { facingMode: { ideal: 'user' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
       })
+      setMediaType('image')
       setCameraStream(stream)
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-      }
       setStep('camera')
     } catch (err) {
-      setError('Impossibile accedere alla camera')
+      const name = err?.name || ''
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setError('Permesso fotocamera negato. Consenti l’accesso nelle impostazioni del browser o usa “Galleria / fotocamera”.')
+      } else if (name === 'NotFoundError') {
+        setError('Nessuna fotocamera trovata. Usa “Carica dalla galleria”.')
+      } else {
+        setError('Impossibile aprire la fotocamera. Prova “Galleria / fotocamera” sotto.')
+      }
+      cameraCaptureInputRef.current?.click()
     }
   }
 
   const capturePhoto = () => {
     if (!videoRef.current) return
-    
+
+    if (!videoRef.current.videoWidth || !videoRef.current.videoHeight) {
+      setError('Camera in avvio… attendi un secondo e scatta di nuovo.')
+      return
+    }
+
     const canvas = document.createElement('canvas')
     canvas.width = videoRef.current.videoWidth
     canvas.height = videoRef.current.videoHeight
@@ -230,6 +264,7 @@ export default function CreateStoryPage() {
 
           <div className="space-y-4">
             <button
+              type="button"
               onClick={startCamera}
               className="w-full p-5 bg-gray-900 rounded-2xl flex items-center gap-4 hover:bg-gray-800 transition"
             >
@@ -238,11 +273,26 @@ export default function CreateStoryPage() {
               </div>
               <div className="text-left">
                 <p className="font-bold">Scatta una foto</p>
-                <p className="text-sm text-gray-400">Usa la fotocamera</p>
+                <p className="text-sm text-gray-400">Fotocamera live (consigliato su PC)</p>
               </div>
             </button>
 
             <button
+              type="button"
+              onClick={() => cameraCaptureInputRef.current?.click()}
+              className="w-full p-5 bg-gray-900 rounded-2xl flex items-center gap-4 hover:bg-gray-800 transition"
+            >
+              <div className="w-14 h-14 bg-rose-500/20 rounded-full flex items-center justify-center">
+                <Camera size={24} className="text-rose-400" />
+              </div>
+              <div className="text-left">
+                <p className="font-bold">Galleria / fotocamera</p>
+                <p className="text-sm text-gray-400">Migliore su iPhone e Android</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="w-full p-5 bg-gray-900 rounded-2xl flex items-center gap-4 hover:bg-gray-800 transition"
             >
@@ -262,6 +312,14 @@ export default function CreateStoryPage() {
               className="hidden"
               onChange={handleFileSelect}
             />
+            <input
+              ref={cameraCaptureInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
           </div>
         </div>
       )}
@@ -274,7 +332,9 @@ export default function CreateStoryPage() {
             autoPlay
             playsInline
             muted
-            className="w-full h-full object-cover"
+            onLoadedMetadata={() => setError(null)}
+            className="w-full h-full object-cover mirror"
+            style={{ transform: 'scaleX(-1)' }}
           />
           <div className="absolute bottom-8 left-0 right-0 flex justify-center">
             <button

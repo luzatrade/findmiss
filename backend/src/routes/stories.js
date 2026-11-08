@@ -138,7 +138,10 @@ router.post('/', authenticate, requireAdvertiser, async (req, res) => {
     let linkedAnnouncementId = announcement_id || null;
     if (!linkedAnnouncementId) {
       const latest = await prisma.announcement.findFirst({
-        where: { user_id: userId, status: 'active' },
+        where: {
+          user_id: userId,
+          status: { in: ['active', 'pending'] },
+        },
         orderBy: { updated_at: 'desc' },
         select: { id: true },
       });
@@ -155,7 +158,8 @@ router.post('/', authenticate, requireAdvertiser, async (req, res) => {
         media_url,
         thumbnail_url,
         duration: duration || (type === 'image' ? 5 : 15),
-        expires_at
+        expires_at,
+        is_active: true,
       },
       include: {
         user: {

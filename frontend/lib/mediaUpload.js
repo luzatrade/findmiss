@@ -4,6 +4,15 @@ import { normalizeUploadFile } from './normalizeUploadFile'
 
 const API_URL = getApiUrl()
 
+const PERSISTENT_MEDIA_ERROR =
+  'I file caricati sul server API si perdono a ogni redeploy. Su findmiss.it serve Vercel Blob (Storage collegato al progetto + redeploy). Poi ricarica foto/reel/storie.'
+
+export function isFindMissProduction() {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host === 'findmiss.it' || host === 'www.findmiss.it'
+}
+
 export function shouldUseVercelBlob() {
   if (typeof window === 'undefined') return false
   if (process.env.NEXT_PUBLIC_MEDIA_UPLOAD_TARGET === 'railway') return false
@@ -15,6 +24,12 @@ export function shouldUseVercelBlob() {
   }
 
   return process.env.NEXT_PUBLIC_USE_VERCEL_BLOB !== 'false'
+}
+
+function assertProductionUsesPersistentStorage() {
+  if (isFindMissProduction() && !shouldUseVercelBlob()) {
+    throw new Error(PERSISTENT_MEDIA_ERROR)
+  }
 }
 
 async function fetchUserId(token) {
@@ -37,13 +52,23 @@ async function uploadFileToVercelBlob(token, file) {
   const folder = file.type?.startsWith('video/') ? 'videos' : 'images'
   const pathname = `findmiss/${userId}/${folder}/${Date.now()}-${safeFilename(file.name)}`
 
-  const blob = await upload(pathname, file, {
-    access: 'public',
-    handleUploadUrl: '/api/media/upload',
-    clientPayload: JSON.stringify({ token }),
-  })
-
-  return blob
+  try {
+    const blob = await upload(pathname, file, {
+      access: 'public',
+      handleUploadUrl: '/api/media/upload',
+      clientPayload: JSON.stringify({ token }),
+    })
+    return blob
+  } catch (error) {
+    if (isFindMissProduction()) {
+      throw new Error(
+        error?.message?.includes('Blob')
+          ? PERSISTENT_MEDIA_ERROR
+          : `Upload non riuscito: ${error?.message || 'errore sconosciuto'}. ${PERSISTENT_MEDIA_ERROR}`
+      )
+    }
+    throw error
+  }
 }
 
 function fileToMediaItem(file, blob, { isReel = false } = {}) {
@@ -105,6 +130,8 @@ export async function uploadAnnouncementMediaFiles(token, announcementId, files,
     throw new Error('Nessun file selezionato')
   }
 
+  assertProductionUsesPersistentStorage()
+
   if (shouldUseVercelBlob()) {
     const items = []
     for (const file of files) {
@@ -112,6 +139,10 @@ export async function uploadAnnouncementMediaFiles(token, announcementId, files,
       items.push(fileToMediaItem(file, blob, options))
     }
     return registerAnnouncementMedia(token, announcementId, items, options)
+  }
+
+  if (isFindMissProduction()) {
+    throw new Error(PERSISTENT_MEDIA_ERROR)
   }
 
   return uploadViaRailwayMultipart(token, announcementId, files, options)
@@ -123,6 +154,8 @@ export async function uploadPublicMediaFile(token, file) {
     throw new Error('File non valido')
   }
 
+  assertProductionUsesPersistentStorage()
+
   if (shouldUseVercelBlob()) {
     const blob = await uploadFileToVercelBlob(token, uploadable)
     const item = fileToMediaItem(uploadable, blob)
@@ -131,6 +164,10 @@ export async function uploadPublicMediaFile(token, file) {
       thumbnail_url: item.thumbnail_url,
       type: item.type,
     }
+  }
+
+  if (isFindMissProduction()) {
+    throw new Error(PERSISTENT_MEDIA_ERROR)
   }
 
   const formData = new FormData()

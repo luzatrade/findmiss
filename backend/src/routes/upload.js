@@ -5,6 +5,7 @@ const fs = require('fs');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
 const { processImage } = require('../services/imageCompression');
+const { isAllowedRemoteMediaUrl } = require('../utils/remoteMediaUrl');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -336,6 +337,113 @@ async function persistAnnouncementMedia(req, res) {
   }
 }
 
+async function registerRemoteAnnouncementMedia(req, res) {
+  try {
+    const { announcement_id, is_reel, items } = req.body;
+
+    if (!announcement_id) {
+      return res.status(400).json({ success: false, error: 'announcement_id richiesto' });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, error: 'items richiesto (array url)' });
+    }
+
+    const announcement = await prisma.announcement.findUnique({
+      where: { id: announcement_id },
+      include: {
+        media: {
+          select: { id: true, is_primary: true, position: true },
+          orderBy: { position: 'asc' },
+        },
+      },
+    });
+
+    if (!announcement) {
+      return res.status(404).json({ success: false, error: 'Annuncio non trovato' });
+    }
+
+    if (announcement.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Non autorizzato' });
+    }
+
+    const basePosition = announcement.media.length;
+    let hasPrimary = announcement.media.some((item) => item.is_primary);
+    let hasVideo = announcement.has_video;
+    const reelUpload = is_reel === true || is_reel === 'true';
+    const createdMedia = [];
+
+    if (reelUpload) {
+      await prisma.media.updateMany({
+        where: { announcement_id, is_reel: true, type: 'video' },
+        data: { is_reel: false },
+      });
+    }
+
+    for (let index = 0; index < items.length; index += 1) {
+      const item = items[index];
+      const type = item.type === 'video' ? 'video' : 'image';
+      const url = item.url;
+      const thumbnailUrl = item.thumbnail_url || (type === 'image' ? url : null);
+
+      if (!isAllowedRemoteMediaUrl(url)) {
+        return res.status(400).json({
+          success: false,
+          error: 'URL media non consentito (usa Vercel Blob o /uploads)',
+        });
+      }
+      if (thumbnailUrl && !isAllowedRemoteMediaUrl(thumbnailUrl)) {
+        return res.status(400).json({ success: false, error: 'URL thumbnail non consentito' });
+      }
+
+      const isVideo = type === 'video';
+      const isReelItem = Boolean(reelUpload && isVideo);
+      const isPrimary = !hasPrimary && index === 0 && !isVideo;
+
+      if (isVideo) {
+        hasVideo = true;
+      }
+      if (isPrimary) {
+        hasPrimary = true;
+      }
+
+      const record = await prisma.media.create({
+        data: {
+          announcement_id,
+          type,
+          url,
+          thumbnail_url: thumbnailUrl,
+          position: basePosition + index,
+          is_primary: isPrimary,
+          is_reel: isReelItem,
+          metadata_removed: type === 'image',
+        },
+      });
+
+      createdMedia.push(record);
+    }
+
+    const publishedReel = reelUpload && createdMedia.some((item) => item.is_reel);
+
+    await prisma.announcement.update({
+      where: { id: announcement_id },
+      data: { has_video: hasVideo || publishedReel },
+    });
+
+    if (publishedReel) {
+      await publishReelToPublicFeed(announcement_id);
+    }
+
+    return res.json({
+      success: true,
+      data: createdMedia,
+      published_to_reels: Boolean(publishedReel && isReelsAutoPublishEnabled()),
+    });
+  } catch (error) {
+    console.error('Errore registrazione media remoto:', error);
+    return res.status(500).json({ success: false, error: 'Errore registrazione media' });
+  }
+}
+
 router.delete('/media/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
@@ -384,7 +492,11 @@ router.delete('/media/:id', authenticate, async (req, res) => {
       data: { has_video: videoCount > 0 },
     });
 
-    res.json({ success: true, message: 'Media eliminato' });
+    res.json({
+      success: true,
+      message: 'Media eliminato',
+      deleted: { url: media.url, thumbnail_url: media.thumbnail_url },
+    });
   } catch (error) {
     console.error('Errore eliminazione media:', error);
     res.status(500).json({ success: false, error: 'Errore eliminazione media' });
@@ -392,6 +504,7 @@ router.delete('/media/:id', authenticate, async (req, res) => {
 });
 
 router.post('/', authenticate, upload.single('file'), handleSingleUpload);
+router.post('/media/register', authenticate, registerRemoteAnnouncementMedia);
 router.post('/media', authenticate, upload.array('files', 10), persistAnnouncementMedia);
 router.post('/media/single', authenticate, upload.single('file'), persistAnnouncementMedia);
 

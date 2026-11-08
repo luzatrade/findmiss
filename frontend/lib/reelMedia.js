@@ -1,23 +1,11 @@
 import { getApiUrl } from './runtime-api'
+import { uploadAnnouncementMediaFiles, purgeRemoteBlobIfNeeded } from './mediaUpload'
 
 const API_URL = getApiUrl()
 
 export async function uploadReelToAnnouncement(token, announcementId, videoFile) {
-  const formData = new FormData()
-  formData.append('files', videoFile)
-  formData.append('announcement_id', announcementId)
-  formData.append('is_reel', 'true')
-
-  const res = await fetch(`${API_URL}/upload/media`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-  })
-  const data = await res.json()
-  if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Errore upload reel')
-  }
-  return data.data
+  const data = await uploadAnnouncementMediaFiles(token, announcementId, [videoFile], { isReel: true })
+  return data
 }
 
 export async function deleteReelMedia(token, mediaId) {
@@ -29,6 +17,13 @@ export async function deleteReelMedia(token, mediaId) {
   if (!res.ok || !data.success) {
     throw new Error(data.error || 'Errore eliminazione reel')
   }
+
+  const deleted = data.deleted || {}
+  await purgeRemoteBlobIfNeeded(token, deleted.url)
+  if (deleted.thumbnail_url && deleted.thumbnail_url !== deleted.url) {
+    await purgeRemoteBlobIfNeeded(token, deleted.thumbnail_url)
+  }
+
   return data
 }
 

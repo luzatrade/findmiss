@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../../lib/runtime-api'
+import { buildAuthHref } from '../../../../lib/authRedirect'
 const API_URL = getApiUrl()
 
 async function uploadAnnouncementMedia(token, announcementId, files) {
@@ -63,7 +64,7 @@ export default function EditAnnouncementPage({ params }) {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/auth?redirect=/my-announcements')
+      router.push(buildAuthHref({ redirect: '/my-announcements' }))
       return
     }
     loadData()

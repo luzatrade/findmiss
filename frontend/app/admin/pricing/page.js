@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl } from '../../../lib/runtime-api'
+import { buildAuthHref } from '../../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
@@ -56,7 +57,7 @@ export default function PricingAdminPage() {
     const storedUser = localStorage.getItem('user')
 
     if (!token || !storedUser) {
-      router.push('/auth?redirect=/admin/pricing')
+      router.push(buildAuthHref({ redirect: '/admin/pricing' }))
       return
     }
 
@@ -67,7 +68,7 @@ export default function PricingAdminPage() {
         return
       }
     } catch {
-      router.push('/auth?redirect=/admin/pricing')
+      router.push(buildAuthHref({ redirect: '/admin/pricing' }))
       return
     }
 

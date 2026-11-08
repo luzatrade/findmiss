@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl } from '../../lib/runtime-api'
+import { buildAuthHref } from '../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
@@ -101,7 +102,7 @@ export default function PaymentsPage() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/auth?redirect=/payments')
+      router.push(buildAuthHref({ redirect: '/payments' }))
       return
     }
     

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl } from '../../../lib/runtime-api'
+import { buildAuthHref } from '../../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
@@ -41,7 +42,7 @@ export default function AdminSettingsPage() {
     const storedUser = localStorage.getItem('user')
 
     if (!token || !storedUser) {
-      router.push('/auth?redirect=/admin/settings')
+      router.push(buildAuthHref({ redirect: '/admin/settings' }))
       return
     }
 
@@ -53,7 +54,7 @@ export default function AdminSettingsPage() {
       }
       loadTwoFactorStatus(token)
     } catch {
-      router.push('/auth?redirect=/admin/settings')
+      router.push(buildAuthHref({ redirect: '/admin/settings' }))
       return
     }
 

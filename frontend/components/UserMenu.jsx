@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { buildAuthHref } from '../lib/authRedirect'
 import Link from 'next/link'
 import { 
   X, User, Heart, Bell, Settings, HelpCircle, LogOut, LogIn, UserPlus, 
@@ -103,7 +104,7 @@ export default function UserMenu({ isOpen, onClose }) {
               </button>
 
               <button 
-                onClick={() => handleNavigation('/auth?register=1')}
+                onClick={() => handleNavigation(buildAuthHref({ register: true }))}
                 className="w-full bg-gray-100 hover:bg-gray-200 p-4 rounded-xl flex items-center gap-4 transition"
               >
                 <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
@@ -120,7 +121,11 @@ export default function UserMenu({ isOpen, onClose }) {
               <button 
                 onClick={() =>
                   handleNavigation(
-                    '/auth?register=1&role=advertiser&redirect=/announcements/new'
+                    buildAuthHref({
+                      register: true,
+                      role: 'advertiser',
+                      redirect: '/announcements/new',
+                    })
                   )
                 }
                 className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 p-4 rounded-xl flex items-center gap-4 transition text-white"

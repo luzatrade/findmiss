@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, Camera, Loader2, Save, AlertCircle, User, Mail, Phone, Lock } from 'lucide-react'
 
 import { getApiUrl } from '../../../lib/runtime-api'
+import { buildAuthHref } from '../../../lib/authRedirect'
 import AdvertiserFilterProfileFields from '../../../components/AdvertiserFilterProfileFields'
 import { buildFilterProfilePayload } from '../../../lib/announcementFilterProfile'
 import { DEFAULT_SERVICE_FLAGS } from '../../../lib/filterFieldOptions'
@@ -57,7 +58,7 @@ export default function EditProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/auth?redirect=/profile/edit')
+      router.push(buildAuthHref({ redirect: '/profile/edit' }))
       return
     }
 

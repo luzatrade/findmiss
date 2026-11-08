@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Search, Heart, User, Film } from 'lucide-react'
 import { useInboxAlerts } from '../../lib/useInboxAlerts'
+import { getApiUrl } from '../../lib/runtime-api'
+import { syncStoredUserFromProfile } from '../../lib/syncStoredUser'
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -11,15 +13,36 @@ export default function BottomNav() {
   const [isAdvertiser, setIsAdvertiser] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token')
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem('token')
+    setIsLoggedIn(!!token)
+
+    const applyUser = (parsed) => {
+      if (!parsed) return
+      setIsAdvertiser(parsed.role === 'advertiser' || parsed.role === 'admin')
+    }
+
+    if (token) {
+      syncStoredUserFromProfile(getApiUrl(), token)
+        .then(applyUser)
+        .catch(() => {
+          const user = localStorage.getItem('user')
+          if (user) {
+            try {
+              applyUser(JSON.parse(user))
+            } catch {
+              /* ignore */
+            }
+          }
+        })
+    } else {
       const user = localStorage.getItem('user')
-      setIsLoggedIn(!!token)
       if (user) {
         try {
-          const parsed = JSON.parse(user)
-          setIsAdvertiser(parsed.role === 'advertiser')
-        } catch {}
+          applyUser(JSON.parse(user))
+        } catch {
+          /* ignore */
+        }
       }
     }
   }, [pathname])

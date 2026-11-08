@@ -10,6 +10,13 @@ const prisma = new PrismaClient();
 router.post('/', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
+
+    if (req.user.role === 'user') {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'advertiser' },
+      });
+    }
     const {
       category_id,
       city_id,

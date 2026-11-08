@@ -9,6 +9,11 @@ const {
   verifyTwoFactorChallenge,
 } = require('../services/authTokens');
 const { verifyTotpCode } = require('../services/totp');
+const { mapAuthValidationErrors } = require('../utils/authValidationMessages');
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -25,7 +30,7 @@ router.post('/register', async (req, res) => {
     const normalizedRole = ['user', 'advertiser'].includes(role) ? role : 'user';
 
     const sanitizedData = {
-      email: sanitizeInput(email),
+      email: normalizeEmail(sanitizeInput(email)),
       password: password, // Don't sanitize password
       nickname: nickname ? sanitizeInput(nickname) : null,
       role: normalizedRole
@@ -34,15 +39,16 @@ router.post('/register', async (req, res) => {
     // Validate input
     const validationErrors = validateAuthInput(sanitizedData, true);
     if (validationErrors.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Validation failed',
-        details: validationErrors 
+      return res.status(400).json({
+        success: false,
+        error: mapAuthValidationErrors(validationErrors),
+        details: validationErrors,
       });
     }
 
-    // Verifica se email esiste già
-    const existingUser = await prisma.user.findUnique({ where: { email: sanitizedData.email } });
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: sanitizedData.email, mode: 'insensitive' } },
+    });
     if (existingUser) {
       return res.status(400).json({ success: false, error: 'Email già registrata' });
     }
@@ -91,7 +97,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email e password richiesti' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = normalizeEmail(email);
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    });
     if (!user) {
       return res.status(401).json({ success: false, error: 'Credenziali non valide' });
     }

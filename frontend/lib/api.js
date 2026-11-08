@@ -61,11 +61,11 @@ export async function login(email, password) {
   return data
 }
 
-export async function register(email, password, nickname) {
+export async function register(email, password, nickname, role = 'user') {
   const response = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
     headers: getHeaders(false),
-    body: JSON.stringify({ email, password, nickname }),
+    body: JSON.stringify({ email, password, nickname, role }),
   })
 
   const data = await handleResponse(response)

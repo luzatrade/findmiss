@@ -103,7 +103,7 @@ export default function UserMenu({ isOpen, onClose }) {
               </button>
 
               <button 
-                onClick={() => handleNavigation('/auth')}
+                onClick={() => handleNavigation('/auth?register=1')}
                 className="w-full bg-gray-100 hover:bg-gray-200 p-4 rounded-xl flex items-center gap-4 transition"
               >
                 <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
@@ -118,7 +118,11 @@ export default function UserMenu({ isOpen, onClose }) {
               <div className="h-px bg-gray-100 my-4" />
 
               <button 
-                onClick={() => handleNavigation('/auth?redirect=/announcements/new')}
+                onClick={() =>
+                  handleNavigation(
+                    '/auth?register=1&role=advertiser&redirect=/announcements/new'
+                  )
+                }
                 className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 p-4 rounded-xl flex items-center gap-4 transition text-white"
               >
                 <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">

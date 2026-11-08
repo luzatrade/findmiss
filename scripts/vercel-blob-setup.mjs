@@ -6,7 +6,7 @@
 const token = process.env.FINDMISS_VERCEL_API_TOKEN || process.env.VERCEL_TOKEN
 const teamSlug = process.env.VERCEL_TEAM_SLUG || 'luzatrades-projects'
 const projectName = process.env.VERCEL_PROJECT_NAME || 'findmiss'
-const storeName = process.env.VERCEL_BLOB_STORE_NAME || 'findmiss-media'
+const storeName = process.env.VERCEL_BLOB_STORE_NAME || 'findmiss-blob'
 
 if (!token) {
   console.error('Manca FINDMISS_VERCEL_API_TOKEN')

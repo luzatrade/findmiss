@@ -6,13 +6,18 @@ import Link from 'next/link'
 import { ArrowLeft, Mail, Lock, Phone, User, Eye, EyeOff, Loader2, AlertCircle, Check } from 'lucide-react'
 
 import { getApiUrl } from '../../lib/runtime-api'
+import {
+  buildAuthHref,
+  parseAuthRedirect,
+  resolvePostAuthPath,
+} from '../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
 export default function AuthPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/'
+  const parsedRedirect = parseAuthRedirect(searchParams)
   const initialRegister = searchParams.get('register') === '1'
   const initialRoleParam = searchParams.get('role')
 
@@ -47,6 +52,13 @@ export default function AuthPage() {
   const switchMode = (newMode) => {
     setMode(newMode)
     resetFields()
+    if (newMode === 'register' && parsedRedirect?.startsWith('/chat')) {
+      const href =
+        role === 'advertiser'
+          ? buildAuthHref({ register: true, role: 'advertiser', redirect: '/announcements/new' })
+          : buildAuthHref({ register: true })
+      router.replace(href)
+    }
   }
 
   useEffect(() => {
@@ -66,12 +78,19 @@ export default function AuthPage() {
     localStorage.setItem('user', JSON.stringify(data.user))
   }
 
+  const goAfterAuth = (isRegister, userRole) => {
+    const destination = resolvePostAuthPath({
+      redirect: parsedRedirect,
+      isRegister,
+      role: userRole,
+    })
+    router.push(destination)
+  }
+
   const completeLogin = (data) => {
     persistAuth(data)
     setSuccess('Login effettuato!')
-    setTimeout(() => {
-      router.push(redirectTo)
-    }, 500)
+    setTimeout(() => goAfterAuth(false, data.user?.role), 500)
   }
 
   const handleLogin = async (e) => {
@@ -190,9 +209,7 @@ export default function AuthPage() {
           ? 'Account inserzionista creato!'
           : 'Account creato!'
       )
-      setTimeout(() => {
-        router.push(redirectTo)
-      }, 500)
+      setTimeout(() => goAfterAuth(true, data.data.user?.role || role), 500)
     } catch {
       setError('Errore di connessione')
     } finally {

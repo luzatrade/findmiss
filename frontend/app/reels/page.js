@@ -12,6 +12,7 @@ import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-a
 import OptimizedVideo from '../../components/OptimizedVideo'
 import OptimizedImage from '../../components/OptimizedImage'
 import { validateMediaFile } from '../../lib/media'
+import { buildAuthHref } from '../../lib/authRedirect'
 import {
   deleteReelMedia,
   fetchMyAnnouncements,
@@ -464,7 +465,7 @@ export default function ReelsPage() {
 
   const openUploadModal = () => {
     if (!isLoggedIn) {
-      router.push('/auth?redirect=/reels?upload=1')
+      router.push(buildAuthHref({ redirect: '/reels?upload=1' }))
       return
     }
     setShowUploadModal(true)
@@ -511,7 +512,7 @@ export default function ReelsPage() {
             ) : (
               <button
                 type="button"
-                onClick={() => router.push('/auth?redirect=/reels?upload=1')}
+                onClick={() => router.push(buildAuthHref({ redirect: '/reels?upload=1' }))}
                 className="text-pink-400 hover:underline"
               >
                 Accedi per caricare un reel

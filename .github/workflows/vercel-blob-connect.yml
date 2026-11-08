@@ -1,0 +1,23 @@
+# Collega lo store Blob al progetto findmiss (esegui una volta da GitHub Actions).
+# Repo → Settings → Secrets → Actions: FINDMISS_VERCEL_API_TOKEN
+
+name: Vercel Blob connect
+
+on:
+  workflow_dispatch:
+
+jobs:
+  connect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Connect Blob store to findmiss
+        env:
+          FINDMISS_VERCEL_API_TOKEN: ${{ secrets.FINDMISS_VERCEL_API_TOKEN }}
+          VERCEL_TEAM_SLUG: luzatrades-projects
+          VERCEL_PROJECT_NAME: findmiss
+          VERCEL_BLOB_STORE_NAME: findmiss-blob
+        run: node scripts/vercel-blob-setup.mjs

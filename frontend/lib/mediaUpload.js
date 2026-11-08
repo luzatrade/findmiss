@@ -1,6 +1,7 @@
 import { uploadPresigned } from '@vercel/blob/client'
 import { getApiUrl } from './runtime-api'
 import { normalizeUploadFile } from './normalizeUploadFile'
+import { formatMediaUploadError } from './mediaUploadFeedback'
 
 const API_URL = getApiUrl()
 
@@ -63,12 +64,13 @@ async function uploadFileToVercelBlob(token, file) {
   } catch (error) {
     if (isFindMissProduction()) {
       throw new Error(
-        error?.message?.includes('Blob')
-          ? PERSISTENT_MEDIA_ERROR
-          : `Upload non riuscito: ${error?.message || 'errore sconosciuto'}. ${PERSISTENT_MEDIA_ERROR}`
+        formatMediaUploadError(
+          error?.message?.includes('Blob') ? PERSISTENT_MEDIA_ERROR : error,
+          { fileName: file?.name }
+        )
       )
     }
-    throw error
+    throw new Error(formatMediaUploadError(error, { fileName: file?.name }))
   }
 }
 
@@ -101,9 +103,14 @@ async function registerAnnouncementMedia(token, announcementId, items, { isReel 
   })
   const data = await res.json()
   if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Errore salvataggio media')
+    throw new Error(
+      formatMediaUploadError(data.error || 'Errore salvataggio media sul database')
+    )
   }
-  return data.data
+  return {
+    saved: data.data || [],
+    publishedToReels: Boolean(data.published_to_reels),
+  }
 }
 
 async function uploadViaRailwayMultipart(token, announcementId, files, { isReel = false } = {}) {
@@ -135,9 +142,20 @@ export async function uploadAnnouncementMediaFiles(token, announcementId, files,
 
   if (shouldUseVercelBlob()) {
     const items = []
-    for (const file of files) {
-      const blob = await uploadFileToVercelBlob(token, file)
-      items.push(fileToMediaItem(file, blob, options))
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index]
+      try {
+        const blob = await uploadFileToVercelBlob(token, file)
+        items.push(fileToMediaItem(file, blob, options))
+      } catch (error) {
+        throw new Error(
+          formatMediaUploadError(error, {
+            fileName: file?.name,
+            index,
+            total: files.length,
+          })
+        )
+      }
     }
     return registerAnnouncementMedia(token, announcementId, items, options)
   }

@@ -4,8 +4,7 @@ import { uploadAnnouncementMediaFiles, purgeRemoteBlobIfNeeded } from './mediaUp
 const API_URL = getApiUrl()
 
 export async function uploadReelToAnnouncement(token, announcementId, videoFile) {
-  const data = await uploadAnnouncementMediaFiles(token, announcementId, [videoFile], { isReel: true })
-  return data
+  return uploadAnnouncementMediaFiles(token, announcementId, [videoFile], { isReel: true })
 }
 
 export async function deleteReelMedia(token, mediaId) {

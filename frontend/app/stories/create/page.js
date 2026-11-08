@@ -8,11 +8,17 @@ import { getApiUrl, toAbsoluteMediaUrl, getApiOrigin } from '../../../lib/runtim
 import { buildAuthHref } from '../../../lib/authRedirect'
 import { syncStoredUserFromProfile } from '../../../lib/syncStoredUser'
 import { uploadPublicMediaFile } from '../../../lib/mediaUpload'
+import { useToast } from '../../../components/ToastProvider'
+import {
+  buildMediaUploadSuccessMessage,
+  formatMediaUploadError,
+} from '../../../lib/mediaUploadFeedback'
 
 const API_URL = getApiUrl()
 
 export default function CreateStoryPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const fileInputRef = useRef(null)
   const cameraCaptureInputRef = useRef(null)
   const videoRef = useRef(null)
@@ -183,6 +189,11 @@ export default function CreateStoryPage() {
       const storyData = await storyRes.json()
       
       if (storyData.success) {
+        showToast({
+          type: 'success',
+          message: buildMediaUploadSuccessMessage({ kind: 'story', count: 1 }),
+          duration: 5000,
+        })
         let userId = null
         try {
           userId = JSON.parse(localStorage.getItem('user') || '{}').id
@@ -198,7 +209,9 @@ export default function CreateStoryPage() {
         throw new Error(storyData.error || 'Errore creazione storia')
       }
     } catch (err) {
-      setError(err.message)
+      const message = formatMediaUploadError(err)
+      setError(message)
+      showToast({ type: 'error', message, duration: 7000 })
     } finally {
       setIsUploading(false)
     }

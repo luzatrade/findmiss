@@ -903,7 +903,7 @@ export default function ReelsPage() {
                 >
                   <Upload className="text-gray-400" size={32} />
                   <span className="text-sm text-gray-400">
-                    {uploadData.video ? uploadData.video.name : 'Seleziona video (max 100MB)'}
+                    {uploadData.video ? uploadData.video.name : 'Seleziona video (max 80MB, MP4/MOV)'}
                   </span>
                 </button>
               </div>

@@ -22,7 +22,15 @@ const allowedImageTypes = new Set([
   'image/heic',
   'image/heif',
 ]);
-const allowedVideoTypes = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
+const allowedVideoTypes = new Set([
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/x-m4v',
+  'video/3gpp',
+]);
+const MAX_FILE_SIZE_MB = Number(process.env.UPLOAD_MAX_MB) || 80;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 function defaultExtension(mimetype, originalname) {
   const fromName = path.extname(originalname || '');
@@ -45,32 +53,79 @@ function isAllowedUpload(file) {
   }
   const name = (file.originalname || '').toLowerCase();
   if (mimetype === 'application/octet-stream' || mimetype === '') {
-    return /\.(jpe?g|png|webp|gif|heic|heif|mp4|webm|mov)$/i.test(name);
+    return /\.(jpe?g|png|webp|gif|heic|heif|mp4|webm|mov|m4v|3gp)$/i.test(name);
   }
   return false;
 }
 
-function saveMulterFileToDisk(file) {
-  const mimetype = (file.mimetype || '').toLowerCase();
-  const isVideo = mimetype.startsWith('video') || /\.(mp4|webm|mov)$/i.test(file.originalname || '');
-  const folder = isVideo ? 'videos' : 'images';
-  const uploadPath = path.join(UPLOADS_ROOT, folder);
-  fs.mkdirSync(uploadPath, { recursive: true });
+function isVideoUpload(file) {
+  const mimetype = (file?.mimetype || '').toLowerCase();
+  if (mimetype.startsWith('video')) return true;
+  return /\.(mp4|webm|mov|m4v|3gp)$/i.test(file?.originalname || '');
+}
 
-  const ext = defaultExtension(mimetype, file.originalname);
-  const filename = `file-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-  const fullPath = path.join(uploadPath, filename);
+function interruptedUploadMessage(req) {
+  const files = req.files?.length ? req.files : req.file ? [req.file] : [];
+  const isReel = req.body?.is_reel === 'true' || req.body?.is_reel === true;
+  if (isReel || files.some(isVideoUpload)) {
+    return `Upload interrotto. Riprova con un video MP4/MOV (max ${MAX_FILE_SIZE_MB}MB) e connessione stabile.`;
+  }
+  return 'Upload interrotto. Riprova con JPG/PNG (max 12MB) e connessione stabile.';
+}
 
-  if (!file.buffer || !file.buffer.length) {
+function ensureUploadedFileOnDisk(file) {
+  if (!file) {
     throw new Error('File vuoto o upload interrotto');
   }
 
-  fs.writeFileSync(fullPath, file.buffer);
-  file.path = fullPath;
-  file.filename = filename;
+  const mimetype = (file.mimetype || '').toLowerCase();
   file.mimetype = mimetype || file.mimetype;
-  return file;
+
+  if (file.path) {
+    try {
+      const stat = fs.statSync(file.path);
+      if (stat.size > 0) {
+        if (!file.filename) {
+          file.filename = path.basename(file.path);
+        }
+        file.size = stat.size;
+        return file;
+      }
+    } catch {
+      // Continua con fallback buffer
+    }
+  }
+
+  if (file.buffer?.length) {
+    const folder = isVideoUpload(file) ? 'videos' : 'images';
+    const uploadPath = path.join(UPLOADS_ROOT, folder);
+    fs.mkdirSync(uploadPath, { recursive: true });
+    const ext = defaultExtension(mimetype, file.originalname);
+    const filename = file.filename || `file-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    const fullPath = path.join(uploadPath, filename);
+    fs.writeFileSync(fullPath, file.buffer);
+    file.path = fullPath;
+    file.filename = filename;
+    file.size = file.buffer.length;
+    return file;
+  }
+
+  throw new Error('File vuoto o upload interrotto');
 }
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const folder = isVideoUpload(file) ? 'videos' : 'images';
+    const uploadPath = path.join(UPLOADS_ROOT, folder);
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const mimetype = (file.mimetype || '').toLowerCase();
+    const ext = defaultExtension(mimetype, file.originalname);
+    cb(null, `file-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+  },
+});
 
 const fileFilter = (req, file, cb) => {
   if (isAllowedUpload(file)) {
@@ -81,10 +136,10 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage,
   fileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024,
+    fileSize: MAX_FILE_SIZE_BYTES,
     files: 10,
   },
 });
@@ -95,7 +150,7 @@ const handleSingleUpload = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Nessun file caricato' });
     }
 
-    const file = saveMulterFileToDisk(req.file);
+    const file = ensureUploadedFileOnDisk(req.file);
     const isVideo = file.mimetype.startsWith('video');
     let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${file.filename}`;
     let thumbnailUrl = null;
@@ -121,7 +176,7 @@ const handleSingleUpload = async (req, res) => {
     console.error('Errore upload:', error);
     const message =
       error.message?.includes('interrotto') || error.message?.includes('Unexpected end of form')
-        ? 'Upload interrotto. Riprova con JPG/PNG (max 12MB) e connessione stabile.'
+        ? interruptedUploadMessage(req)
         : 'Errore upload';
     res.status(500).json({ success: false, error: message });
   }
@@ -143,7 +198,7 @@ async function optimizeUploadedImage(file) {
 }
 
 async function buildUploadedFileRecord(file, index, basePosition, hasPrimary, isReel) {
-  const saved = saveMulterFileToDisk(file);
+  const saved = ensureUploadedFileOnDisk(file);
   const isVideo = saved.mimetype.startsWith('video');
   let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${saved.filename}`;
   let thumbnailUrl = null;
@@ -243,7 +298,7 @@ async function persistAnnouncementMedia(req, res) {
     console.error('Errore upload media annuncio:', error);
     const message =
       error.message?.includes('interrotto') || error.message?.includes('Unexpected end of form')
-        ? 'Upload interrotto. Riprova con JPG/PNG (max 12MB).'
+        ? interruptedUploadMessage(req)
         : 'Errore upload media';
     return res.status(500).json({ success: false, error: message });
   }
@@ -316,7 +371,7 @@ router.post('/multiple', authenticate, upload.array('files', 10), async (req, re
 
     const results = await Promise.all(
       req.files.map(async (file) => {
-        const saved = saveMulterFileToDisk(file);
+        const saved = ensureUploadedFileOnDisk(file);
         const isVideo = saved.mimetype.startsWith('video');
         let fileUrl = `/uploads/${isVideo ? 'videos' : 'images'}/${saved.filename}`;
         let thumbnailUrl = null;
@@ -367,17 +422,20 @@ router.delete('/:filename', authenticate, async (req, res) => {
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ success: false, error: 'File troppo grande (max 50MB)' });
+      return res.status(400).json({
+        success: false,
+        error: `File troppo grande (max ${MAX_FILE_SIZE_MB}MB)`,
+      });
     }
     return res.status(400).json({ success: false, error: error.message });
   }
   if (error.message === 'Tipo file non supportato. Usa JPG, PNG, WebP o MP4.') {
     return res.status(400).json({ success: false, error: error.message });
   }
-  if (error.message?.includes('Unexpected end of form')) {
+  if (error.message?.includes('Unexpected end of form') || error.message?.includes('interrotto')) {
     return res.status(400).json({
       success: false,
-      error: 'Upload interrotto. Riprova con JPG/PNG e connessione stabile.',
+      error: interruptedUploadMessage(req),
     });
   }
   next(error);

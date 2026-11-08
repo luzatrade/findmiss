@@ -9,6 +9,7 @@ import OptimizedVideo from '../../../components/OptimizedVideo'
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../lib/runtime-api'
 import { shareProfile } from '../../../lib/share'
 import { buildAuthHref } from '../../../lib/authRedirect'
+import { buildWhatsAppUrl } from '../../../lib/whatsappMessage'
 
 const API_URL = getApiUrl()
 
@@ -225,6 +226,10 @@ const ProfilePageClient = ({ id }) => {
   }
 
   // Error state
+  const whatsappHref =
+    profile?.whatsapp &&
+    buildWhatsAppUrl(profile.whatsapp, { name: profile.name, city: profile.city })
+
   if (error || !profile) {
     return (
       <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
@@ -450,11 +455,11 @@ const ProfilePageClient = ({ id }) => {
                         {profile.phone}
                       </a>
                     </div>
-                    {profile.whatsapp && (
+                    {whatsappHref && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-500">WhatsApp</span>
                         <a
-                          href={`https://wa.me/${profile.whatsapp.replace(/[^0-9]/g, '')}`}
+                          href={whatsappHref}
                           target="_blank"
                           rel="noreferrer"
                           className="font-medium text-green-600 hover:underline"
@@ -617,11 +622,11 @@ const ProfilePageClient = ({ id }) => {
                       {profile.phone}
                     </a>
                   </div>
-                  {profile.whatsapp && (
+                  {whatsappHref && (
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500">WhatsApp</span>
                       <a
-                        href={`https://wa.me/${profile.whatsapp.replace(/[^0-9]/g, '')}`}
+                        href={whatsappHref}
                         target="_blank"
                         rel="noreferrer"
                         className="font-medium text-green-600 hover:underline"
@@ -837,9 +842,9 @@ const ProfilePageClient = ({ id }) => {
                 >
                   <Phone className="w-4 h-4" /> Chiama
                 </a>
-                {profile.whatsapp && (
+                {whatsappHref && (
                   <a
-                    href={`https://wa.me/${profile.whatsapp.replace(/[^0-9]/g, '')}`}
+                    href={whatsappHref}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2 rounded-full bg-green-500 text-white text-sm font-semibold shadow-md hover:bg-green-600 transition"

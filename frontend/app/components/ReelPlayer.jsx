@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Heart, MessageCircle, Share2, ChevronUp, ChevronDown, X, Phone } from 'lucide-react'
 
 import { getApiUrl } from '../../lib/runtime-api'
+import { buildWhatsAppUrl } from '../../lib/whatsappMessage'
 
 const API_URL = getApiUrl()
 
@@ -87,9 +88,13 @@ export default function ReelPlayer({ reel, onNext, onPrev, onClose, isActive }) 
   }
 
   const handleWhatsApp = () => {
-    const phone = (reel.user?.phone || '+393331234567').replace(/\s/g, '')
-    const message = encodeURIComponent(`Ciao, sono interessato al tuo annuncio: ${reel.title || reel.stage_name}`)
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank')
+    const phone = reel.user?.phone || reel.phone
+    const city = reel.city?.name || reel.city
+    const url = buildWhatsAppUrl(phone, {
+      name: reel.stage_name || reel.title,
+      city,
+    })
+    if (url) window.open(url, '_blank')
   }
 
   if (!reel || !reel.video) return null

@@ -8,6 +8,8 @@ require('dotenv').config();
 const { resolveDatabaseUrl } = require('./config/resolveDatabaseUrl');
 const { isAutoSeedEnabled } = require('./config/demoMode');
 const { ensureItalianCities } = require('./data/italianCities');
+const { UPLOADS_ROOT } = require('./config/uploads');
+const { logStorageModeOnBoot } = require('./services/objectStorage');
 
 resolveDatabaseUrl();
 
@@ -122,8 +124,8 @@ app.use('/api/upload', uploadRoutes);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve file statici (uploads)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve file statici (uploads) — stesso percorso usato dagli upload Multer
+app.use('/uploads', express.static(UPLOADS_ROOT));
 
 // Routes
 const announcementsRoutes = require('./routes/announcements');
@@ -194,7 +196,8 @@ async function startServer() {
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server avviato su http://0.0.0.0:${PORT}`);
     console.log(`🔌 WebSocket attivo`);
-    console.log(`📁 Upload path: /uploads`);
+    console.log(`📁 Upload path: ${UPLOADS_ROOT}`);
+    logStorageModeOnBoot();
   });
 
   initializeDatabase().catch((error) => {

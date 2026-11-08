@@ -5,6 +5,8 @@ const fs = require('fs');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
 const { processImage } = require('../services/imageCompression');
+const { UPLOADS_ROOT } = require('../config/uploads');
+const { publishStoredMediaUrl, deleteStoredMediaUrl } = require('../services/objectStorage');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -23,10 +25,6 @@ async function publishReelToPublicFeed(announcementId) {
     },
   });
 }
-
-const UPLOADS_ROOT = process.env.UPLOADS_PATH
-  ? path.resolve(process.env.UPLOADS_PATH)
-  : path.join(__dirname, '../../uploads');
 
 const allowedImageTypes = new Set([
   'image/jpeg',
@@ -176,11 +174,13 @@ const handleSingleUpload = async (req, res) => {
       thumbnailUrl = optimized.thumbnailUrl;
     }
 
+    const published = await publishMediaUrls(fileUrl, thumbnailUrl, file.mimetype);
+
     res.json({
       success: true,
       data: {
-        url: fileUrl,
-        thumbnail_url: thumbnailUrl,
+        url: published.fileUrl,
+        thumbnail_url: published.thumbnailUrl,
         type: isVideo ? 'video' : 'image',
         filename: file.filename,
         size: file.size,
@@ -212,6 +212,14 @@ async function optimizeUploadedImage(file) {
   return { fileUrl, thumbnailUrl };
 }
 
+async function publishMediaUrls(fileUrl, thumbnailUrl, mimetype) {
+  const url = await publishStoredMediaUrl(fileUrl, { mimetype });
+  const thumb = thumbnailUrl
+    ? await publishStoredMediaUrl(thumbnailUrl, { mimetype: 'image/webp' })
+    : null;
+  return { fileUrl: url, thumbnailUrl: thumb };
+}
+
 async function buildUploadedFileRecord(file, index, basePosition, hasPrimary, isReel) {
   const saved = ensureUploadedFileOnDisk(file);
   const isVideo = saved.mimetype.startsWith('video');
@@ -224,10 +232,12 @@ async function buildUploadedFileRecord(file, index, basePosition, hasPrimary, is
     thumbnailUrl = optimized.thumbnailUrl;
   }
 
+  const published = await publishMediaUrls(fileUrl, thumbnailUrl, saved.mimetype);
+
   return {
     type: isVideo ? 'video' : 'image',
-    url: fileUrl,
-    thumbnail_url: thumbnailUrl,
+    url: published.fileUrl,
+    thumbnail_url: published.thumbnailUrl,
     position: basePosition + index,
     is_primary: !hasPrimary && index === 0 && !isVideo,
     is_reel: Boolean(isReel && isVideo),
@@ -354,24 +364,8 @@ router.delete('/media/:id', authenticate, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Non autorizzato' });
     }
 
-    const urlPath = media.url || '';
-    const match = urlPath.match(/\/uploads\/(images|videos)\/([^/?#]+)/);
-    if (match) {
-      const filePath = path.join(UPLOADS_ROOT, match[1], match[2]);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
-
-    if (media.thumbnail_url) {
-      const thumbMatch = media.thumbnail_url.match(/\/uploads\/(images|videos)\/([^/?#]+)/);
-      if (thumbMatch) {
-        const thumbPath = path.join(UPLOADS_ROOT, thumbMatch[1], thumbMatch[2]);
-        if (fs.existsSync(thumbPath)) {
-          fs.unlinkSync(thumbPath);
-        }
-      }
-    }
+    await deleteStoredMediaUrl(media.url);
+    await deleteStoredMediaUrl(media.thumbnail_url);
 
     const announcementId = media.announcement_id;
     await prisma.media.delete({ where: { id } });
@@ -414,9 +408,11 @@ router.post('/multiple', authenticate, upload.array('files', 10), async (req, re
           thumbnailUrl = optimized.thumbnailUrl;
         }
 
+        const published = await publishMediaUrls(fileUrl, thumbnailUrl, saved.mimetype);
+
         return {
-          url: fileUrl,
-          thumbnail_url: thumbnailUrl,
+          url: published.fileUrl,
+          thumbnail_url: published.thumbnailUrl,
           type: isVideo ? 'video' : 'image',
           filename: saved.filename,
           size: saved.size,

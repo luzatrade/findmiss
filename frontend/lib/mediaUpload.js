@@ -1,5 +1,6 @@
 import { upload } from '@vercel/blob/client'
 import { getApiUrl } from './runtime-api'
+import { normalizeUploadFile } from './normalizeUploadFile'
 
 const API_URL = getApiUrl()
 
@@ -117,9 +118,14 @@ export async function uploadAnnouncementMediaFiles(token, announcementId, files,
 }
 
 export async function uploadPublicMediaFile(token, file) {
+  const uploadable = normalizeUploadFile(file, { fallbackBase: 'story' })
+  if (!uploadable) {
+    throw new Error('File non valido')
+  }
+
   if (shouldUseVercelBlob()) {
-    const blob = await uploadFileToVercelBlob(token, file)
-    const item = fileToMediaItem(file, blob)
+    const blob = await uploadFileToVercelBlob(token, uploadable)
+    const item = fileToMediaItem(uploadable, blob)
     return {
       url: item.url,
       thumbnail_url: item.thumbnail_url,
@@ -128,8 +134,7 @@ export async function uploadPublicMediaFile(token, file) {
   }
 
   const formData = new FormData()
-  const uploadName = file.name || (file.type?.startsWith('video/') ? 'story.mp4' : 'story.jpg')
-  formData.append('file', file, uploadName)
+  formData.append('file', uploadable, uploadable.name)
 
   const uploadRes = await fetch(`${API_URL}/upload`, {
     method: 'POST',

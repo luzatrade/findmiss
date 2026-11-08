@@ -57,6 +57,10 @@ const validateAuthInput = (data, isRegister = false) => {
   if (isRegister && !validatePassword(data.password)) {
     errors.push('Password must be at least 8 characters long');
   }
+
+  if (isRegister && (!data.nickname || !String(data.nickname).trim())) {
+    errors.push('Nickname is required');
+  }
   
   if (data.nickname && !validateNickname(data.nickname)) {
     errors.push('Nickname must be between 2 and 30 characters');

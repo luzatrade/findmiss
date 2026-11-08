@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Lock, Phone, User, Eye, EyeOff, Loader2, AlertCircle, Check } from 'lucide-react'
@@ -13,13 +13,17 @@ export default function AuthPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/'
-  
-  const [mode, setMode] = useState('login')
+  const initialRegister = searchParams.get('register') === '1'
+  const initialRoleParam = searchParams.get('role')
+
+  const [mode, setMode] = useState(initialRegister ? 'register' : 'login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [nickname, setNickname] = useState('')
-  const [role, setRole] = useState('user')
+  const [role, setRole] = useState(
+    initialRoleParam === 'advertiser' ? 'advertiser' : 'user'
+  )
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -45,9 +49,25 @@ export default function AuthPage() {
     resetFields()
   }
 
-  const completeLogin = (data) => {
+  useEffect(() => {
+    if (searchParams.get('register') === '1') {
+      setMode('register')
+    }
+    if (searchParams.get('role') === 'advertiser') {
+      setRole('advertiser')
+    }
+  }, [searchParams])
+
+  const persistAuth = (data) => {
     localStorage.setItem('token', data.token)
+    if (data.refreshToken) {
+      localStorage.setItem('refreshToken', data.refreshToken)
+    }
     localStorage.setItem('user', JSON.stringify(data.user))
+  }
+
+  const completeLogin = (data) => {
+    persistAuth(data)
     setSuccess('Login effettuato!')
     setTimeout(() => {
       router.push(redirectTo)
@@ -133,8 +153,8 @@ export default function AuthPage() {
       return
     }
     
-    if (password.length < 6) {
-      setError('La password deve essere di almeno 6 caratteri')
+    if (password.length < 8) {
+      setError('La password deve essere di almeno 8 caratteri')
       return
     }
     
@@ -156,14 +176,20 @@ export default function AuthPage() {
       const data = await res.json()
       
       if (!res.ok || !data?.success) {
-        setError(data?.error || 'Registrazione fallita')
+        const detailText = Array.isArray(data?.details)
+          ? data.details.join(' ')
+          : ''
+        setError(data?.error || detailText || 'Registrazione fallita')
         return
       }
-      
-      localStorage.setItem('token', data.data.token)
-      localStorage.setItem('user', JSON.stringify(data.data.user))
-      
-      setSuccess('Account creato!')
+
+      persistAuth(data.data)
+
+      setSuccess(
+        role === 'advertiser'
+          ? 'Account inserzionista creato!'
+          : 'Account creato!'
+      )
       setTimeout(() => {
         router.push(redirectTo)
       }, 500)
@@ -314,6 +340,9 @@ export default function AuthPage() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            {mode === 'register' && (
+              <p className="text-xs text-gray-500 mt-1.5">Minimo 8 caratteri</p>
+            )}
           </div>
           
           {mode === 'register' && (

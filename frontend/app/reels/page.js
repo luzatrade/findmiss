@@ -12,6 +12,8 @@ import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-a
 import OptimizedVideo from '../../components/OptimizedVideo'
 import OptimizedImage from '../../components/OptimizedImage'
 import { validateMediaFile } from '../../lib/media'
+import { fetchCities } from '../../lib/fetchCities'
+import CityPickerField from '../../components/CityPickerField'
 import { buildAuthHref } from '../../lib/authRedirect'
 import {
   deleteReelMedia,
@@ -87,13 +89,12 @@ export default function ReelsPage() {
 
   const loadCitiesAndCategories = async () => {
     try {
-      const [citiesRes, categoriesRes] = await Promise.all([
-        fetch(`${API_URL}/cities`),
-        fetch(`${API_URL}/categories`)
+      const [cityList, categoriesRes] = await Promise.all([
+        fetchCities({ limit: 500 }),
+        fetch(`${API_URL}/categories`),
       ])
-      const citiesData = await citiesRes.json()
+      setCities(cityList)
       const categoriesData = await categoriesRes.json()
-      if (citiesData.success) setCities(citiesData.data || [])
       if (categoriesData.success) setCategories(categoriesData.data || [])
     } catch (error) {
       console.error('Errore caricamento dati:', error)
@@ -957,21 +958,19 @@ export default function ReelsPage() {
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Città *
                     </label>
-                    <select
-                      value={uploadData.city_id}
-                      onChange={(e) =>
-                        setUploadData((prev) => ({ ...prev, city_id: e.target.value }))
-                      }
-                      className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
-                      disabled={isUploading}
-                    >
-                      <option value="">Seleziona città</option>
-                      {cities.map((city) => (
-                        <option key={city.id} value={city.id}>
-                          {city.name}
-                        </option>
-                      ))}
-                    </select>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Cerca il nome (es. Napoli, Palermo, Bologna): tutte le città italiane del sito.
+                    </p>
+                    <div className={isUploading ? 'pointer-events-none opacity-60' : ''}>
+                      <CityPickerField
+                        value={uploadData.city_id}
+                        cities={cities}
+                        onChange={(id) =>
+                          setUploadData((prev) => ({ ...prev, city_id: id }))
+                        }
+                        placeholder="Cerca città..."
+                      />
+                    </div>
                   </div>
 
                   <div>

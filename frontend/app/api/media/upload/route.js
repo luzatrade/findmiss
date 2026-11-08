@@ -1,5 +1,6 @@
 import { handleUpload } from '@vercel/blob/client'
 import { NextResponse } from 'next/server'
+import { isVercelBlobConfigured } from '../../../lib/blobRuntime'
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://api.findmiss.it/api').replace(/\/$/, '')
 
@@ -20,13 +21,6 @@ async function verifyAuthToken(token) {
 }
 
 export async function POST(request) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json(
-      { error: 'Vercel Blob non configurato (BLOB_READ_WRITE_TOKEN mancante)' },
-      { status: 503 }
-    )
-  }
-
   const body = await request.json()
 
   try {
@@ -62,6 +56,16 @@ export async function POST(request) {
 
     return NextResponse.json(jsonResponse)
   } catch (error) {
-    return NextResponse.json({ error: error?.message || 'Upload non riuscito' }, { status: 400 })
+    const message = error?.message || 'Upload non riuscito'
+    if (!isVercelBlobConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            'Vercel Blob non configurato: collega uno store Blob al progetto findmiss (Storage → Connect) e redeploy.',
+        },
+        { status: 503 }
+      )
+    }
+    return NextResponse.json({ error: message }, { status: 400 })
   }
 }

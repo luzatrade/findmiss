@@ -1,5 +1,6 @@
 import { del } from '@vercel/blob'
 import { NextResponse } from 'next/server'
+import { isVercelBlobConfigured } from '../../../lib/blobRuntime'
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://api.findmiss.it/api').replace(/\/$/, '')
 
@@ -28,11 +29,10 @@ function isVercelBlobUrl(url) {
 }
 
 export async function DELETE(request) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json({ success: false, skipped: true })
-  }
-
   try {
+    if (!isVercelBlobConfigured()) {
+      return NextResponse.json({ success: false, skipped: true })
+    }
     const { url, token } = await request.json()
     await verifyAuthToken(token)
 

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useSocket } from '../components/SocketProvider'
 
 import { getApiUrl } from '../../lib/runtime-api'
+import { buildAuthHref } from '../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
@@ -30,7 +31,7 @@ export default function ChatPage() {
       const redirect = searchParams.get('announcement')
         ? `/chat?announcement=${searchParams.get('announcement')}`
         : '/chat'
-      router.push(`/auth?redirect=${encodeURIComponent(redirect)}`)
+      router.push(buildAuthHref({ redirect }))
       return
     }
     loadConversations()

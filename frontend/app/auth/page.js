@@ -70,6 +70,24 @@ export default function AuthPage() {
     }
   }, [searchParams])
 
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    let storedRole = 'user'
+    try {
+      storedRole = JSON.parse(localStorage.getItem('user') || '{}').role || 'user'
+    } catch {
+      storedRole = 'user'
+    }
+    router.replace(
+      resolvePostAuthPath({
+        redirect: parsedRedirect,
+        isRegister: initialRegister,
+        role: storedRole,
+      })
+    )
+  }, [initialRegister, parsedRedirect, router])
+
   const persistAuth = (data) => {
     localStorage.setItem('token', data.token)
     if (data.refreshToken) {

@@ -11,6 +11,8 @@ import {
 import { getApiUrl } from '../../../lib/runtime-api'
 import { validateMediaFile } from '../../../lib/media'
 import CityPickerField from '../../../components/CityPickerField'
+import { buildAuthHref } from '../../../lib/authRedirect'
+import { syncStoredUserFromProfile } from '../../../lib/syncStoredUser'
 
 const API_URL = getApiUrl()
 
@@ -78,31 +80,13 @@ export default function NewAnnouncementPage() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/auth?redirect=/announcements/new')
+      router.push(buildAuthHref({ redirect: '/announcements/new' }))
       return
     }
     
     const loadData = async () => {
       try {
-        const profileRes = await fetch(`${API_URL}/users/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const profileData = await profileRes.json()
-        if (profileData.success && profileData.data) {
-          const u = profileData.data
-          if (typeof window !== 'undefined' && u) {
-            const stored = localStorage.getItem('user')
-            try {
-              const parsed = stored ? JSON.parse(stored) : {}
-              localStorage.setItem(
-                'user',
-                JSON.stringify({ ...parsed, ...u, role: u.role || parsed.role })
-              )
-            } catch {
-              localStorage.setItem('user', JSON.stringify(u))
-            }
-          }
-        }
+        await syncStoredUserFromProfile(API_URL, token)
 
         const [citiesRes, categoriesRes] = await Promise.all([
           fetch(`${API_URL}/cities`),
@@ -247,7 +231,7 @@ export default function NewAnnouncementPage() {
     
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/auth?redirect=/announcements/new')
+      router.push(buildAuthHref({ redirect: '/announcements/new' }))
       return
     }
 

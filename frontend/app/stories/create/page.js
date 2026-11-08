@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { ArrowLeft, Camera, Image, X, Loader2, Upload, Type, Palette } from 'lucide-react'
 
 import { getApiUrl } from '../../../lib/runtime-api'
+import { buildAuthHref } from '../../../lib/authRedirect'
+import { syncStoredUserFromProfile } from '../../../lib/syncStoredUser'
 
 const API_URL = getApiUrl()
 
@@ -32,20 +34,29 @@ export default function CreateStoryPage() {
     const storedUser = localStorage.getItem('user')
     
     if (!token) {
-      router.push('/auth?redirect=/stories/create')
+      router.push(buildAuthHref({ redirect: '/stories/create' }))
       return
     }
-    
-    if (storedUser) {
-      try {
-        const u = JSON.parse(storedUser)
-        if (u.role !== 'advertiser') {
-          setError('Solo gli inserzionisti possono creare storie')
-          return
-        }
-        setUser(u)
-      } catch {}
+
+    const loadUser = async () => {
+      const u = (await syncStoredUserFromProfile(API_URL, token)) || (storedUser ? JSON.parse(storedUser) : null)
+      if (!u) return
+      if (u.role !== 'advertiser' && u.role !== 'admin') {
+        setError('Solo gli inserzionisti possono creare storie')
+        return
+      }
+      setUser(u)
     }
+
+    loadUser().catch(() => {
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser))
+        } catch {
+          /* ignore */
+        }
+      }
+    })
     
     return () => {
       if (cameraStream) {

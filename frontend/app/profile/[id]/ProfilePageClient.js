@@ -8,6 +8,7 @@ import OptimizedVideo from '../../../components/OptimizedVideo'
 
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../lib/runtime-api'
 import { shareProfile } from '../../../lib/share'
+import { buildAuthHref } from '../../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
@@ -162,7 +163,7 @@ const ProfilePageClient = ({ id }) => {
   const handleOpenChat = () => {
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push(`/auth?redirect=${encodeURIComponent(`/chat?announcement=${profile.id}`)}`)
+      router.push(buildAuthHref({ redirect: `/chat?announcement=${profile.id}` }))
       return
     }
     router.push(`/chat?announcement=${profile.id}`)

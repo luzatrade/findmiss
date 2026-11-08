@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl } from '../../lib/runtime-api'
+import { buildAuthHref } from '../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
@@ -43,7 +44,7 @@ export default function SettingsPage() {
     const storedUser = localStorage.getItem('user')
     
     if (!token) {
-      router.push('/auth?redirect=/settings')
+      router.push(buildAuthHref({ redirect: '/settings' }))
       return
     }
     
@@ -82,6 +83,7 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
     router.push('/')
   }

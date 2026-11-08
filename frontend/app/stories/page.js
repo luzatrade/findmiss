@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { X, ChevronLeft, ChevronRight, Heart, MessageCircle, Send, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 
 import { getApiUrl, toAbsoluteMediaUrl } from '../../lib/runtime-api'
+import { buildAuthHref } from '../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
@@ -213,7 +214,7 @@ export default function StoriesPage() {
 
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/auth?redirect=/stories')
+      router.push(buildAuthHref({ redirect: '/stories' }))
       return
     }
 

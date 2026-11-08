@@ -13,6 +13,7 @@ import OptimizedImage from '../../components/OptimizedImage'
 import { MEDIA_SIZES, validateMediaFile } from '../../lib/media'
 import { deleteReelMedia, uploadReelToAnnouncement } from '../../lib/reelMedia'
 import { isAdvertiserSearchProfileIncomplete } from '../../lib/announcementFilterProfile'
+import { buildAuthHref } from '../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
@@ -34,7 +35,7 @@ export default function MyAnnouncementsPage() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/auth?redirect=/my-announcements')
+      router.push(buildAuthHref({ redirect: '/my-announcements' }))
       return
     }
     fetchMyAnnouncements()
@@ -77,7 +78,7 @@ export default function MyAnnouncementsPage() {
       
       if (!res.ok) {
         if (res.status === 401) {
-          router.push('/auth?redirect=/my-announcements')
+          router.push(buildAuthHref({ redirect: '/my-announcements' }))
           return
         }
         throw new Error('Errore nel caricamento')
@@ -146,7 +147,7 @@ export default function MyAnnouncementsPage() {
 
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/auth?redirect=/my-announcements')
+      router.push(buildAuthHref({ redirect: '/my-announcements' }))
       return
     }
 

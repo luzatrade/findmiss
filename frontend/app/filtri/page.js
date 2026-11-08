@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../lib/runtime-api';
 import { FALLBACK_ANNOUNCEMENTS } from '../../lib/fallback-announcements';
 import { isDemoFallbackEnabled } from '../../lib/demoMode';
+import { buildAuthHref } from '../../lib/authRedirect';
 
 // Nuove categorie
 const CATEGORIES = [
@@ -68,7 +69,7 @@ export default function FiltriPage() {
     e.stopPropagation();
     const token = localStorage.getItem('token');
     if (!token) {
-      router.push(`/auth?redirect=${encodeURIComponent(`/chat?announcement=${id}`)}`);
+      router.push(buildAuthHref({ redirect: `/chat?announcement=${id}` }));
       return;
     }
     router.push(`/chat?announcement=${id}`);

@@ -75,7 +75,8 @@ export function resolvePostAuthPath({ redirect, isRegister, role }) {
         safe &&
         (safe.startsWith('/announcements/new') ||
           safe.startsWith('/profile/edit') ||
-          safe.startsWith('/my-announcements'))
+          safe.startsWith('/my-announcements') ||
+          safe.startsWith('/reels'))
       ) {
         return safe
       }

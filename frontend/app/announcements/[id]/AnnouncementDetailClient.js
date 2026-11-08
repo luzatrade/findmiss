@@ -10,6 +10,7 @@ import {
 
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../lib/runtime-api'
 import { shareAnnouncement } from '../../../lib/share'
+import { buildAuthHref } from '../../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 
@@ -338,7 +339,7 @@ export default function AnnouncementDetailClient({ id }) {
             onClick={() => {
               const token = localStorage.getItem('token')
               if (!token) {
-                router.push(`/auth?redirect=${encodeURIComponent(`/chat?announcement=${announcement.id}`)}`)
+                router.push(buildAuthHref({ redirect: `/chat?announcement=${announcement.id}` }))
                 return
               }
               router.push(`/chat?announcement=${announcement.id}`)

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { getApiUrl, getApiOrigin, getWsUrl, toAbsoluteMediaUrl } from '../../lib/runtime-api'
+import { buildAuthHref } from '../../lib/authRedirect'
 
 const API_URL = getApiUrl()
 const API_ORIGIN = getApiOrigin()
@@ -32,7 +33,7 @@ export default function AdminPage() {
     const storedUser = localStorage.getItem('user')
     
     if (!token || !storedUser) {
-      router.push('/auth?redirect=/admin')
+      router.push(buildAuthHref({ redirect: '/admin' }))
       return
     }
     
@@ -44,7 +45,7 @@ export default function AdminPage() {
       }
       setUser(u)
     } catch {
-      router.push('/auth?redirect=/admin')
+      router.push(buildAuthHref({ redirect: '/admin' }))
       return
     }
     
@@ -57,7 +58,7 @@ export default function AdminPage() {
     try {
       const token = localStorage.getItem('token')
       if (!token) {
-        router.push('/auth?redirect=/admin')
+        router.push(buildAuthHref({ redirect: '/admin' }))
         return
       }
 
@@ -71,7 +72,7 @@ export default function AdminPage() {
       ])
 
       if (statsRes.status === 401 || announcementsRes.status === 401) {
-        router.push('/auth?redirect=/admin')
+        router.push(buildAuthHref({ redirect: '/admin' }))
         return
       }
 

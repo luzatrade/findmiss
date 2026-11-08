@@ -11,6 +11,7 @@ import {
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../lib/runtime-api'
 import { shareAnnouncement } from '../../../lib/share'
 import { buildAuthHref } from '../../../lib/authRedirect'
+import { buildWhatsAppUrl } from '../../../lib/whatsappMessage'
 
 const API_URL = getApiUrl()
 
@@ -349,9 +350,16 @@ export default function AnnouncementDetailClient({ id }) {
             <MessageCircle size={18} />
             Chat
           </button>
-          {announcement.phone && (
+          {(() => {
+            const waHref = announcement.phone
+              ? buildWhatsAppUrl(announcement.phone, {
+                  name: announcement.stage_name || announcement.title,
+                  city: announcement.city,
+                })
+              : null
+            return waHref ? (
             <a
-              href={`https://wa.me/${announcement.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Ciao, sono interessato al tuo annuncio: ${announcement.title}`)}`}
+              href={waHref}
               target="_blank"
               rel="noreferrer"
               className="flex-1 bg-[#25D366] hover:bg-[#20BA5A] text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg"
@@ -361,7 +369,8 @@ export default function AnnouncementDetailClient({ id }) {
               </svg>
               WhatsApp
             </a>
-          )}
+            ) : null
+          })()}
         </div>
       </div>
 

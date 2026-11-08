@@ -1,8 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Heart, MessageCircle, MoreHorizontal, MapPin, Calendar, Clock, Star, Check, X, ChevronLeft, ChevronRight, Play, Share2, Phone, Loader2 } from 'lucide-react'
+import { ArrowLeft, Heart, MessageCircle, MoreHorizontal, MapPin, Calendar, Clock, Star, Check, X, ChevronLeft, ChevronRight, Play, Share2, Phone, Loader2, Film } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Map from '../../../components/Map'
+import OptimizedVideo from '../../../components/OptimizedVideo'
 
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../lib/runtime-api'
 import { shareProfile } from '../../../lib/share'
@@ -32,6 +34,9 @@ const ProfilePageClient = ({ id }) => {
         
         if (data.success && data.data) {
           const a = data.data
+          const reelMedia = a.media?.find((m) => m.is_reel && m.type === 'video') || null
+          const imageMedia = (a.media || []).filter((m) => m.type === 'image')
+          const gallerySources = imageMedia.length > 0 ? imageMedia : (a.media || [])
           // Trasforma i dati dal backend al formato frontend
           setProfile({
             id: a.id,
@@ -53,10 +58,23 @@ const ProfilePageClient = ({ id }) => {
               ? new Date(a.user.last_login).toLocaleString('it-IT', { hour: '2-digit', minute: '2-digit' })
               : 'N/D',
             online: false,
-            coverImage: toAbsoluteMediaUrl(a.media?.[0]?.url, getApiOrigin(), 'https://via.placeholder.com/1200x400?text=No+Cover'),
-            images: a.media?.length > 0 
-              ? a.media.map(m => toAbsoluteMediaUrl(m.url || m.thumbnail_url, getApiOrigin()))
+            coverImage: toAbsoluteMediaUrl(
+              imageMedia[0]?.url || reelMedia?.thumbnail_url || gallerySources[0]?.url,
+              getApiOrigin(),
+              'https://via.placeholder.com/1200x400?text=No+Cover'
+            ),
+            images: gallerySources.length > 0
+              ? gallerySources.map((m) => toAbsoluteMediaUrl(m.url || m.thumbnail_url, getApiOrigin()))
               : ['https://via.placeholder.com/600x800?text=No+Image'],
+            reel: reelMedia
+              ? {
+                  id: reelMedia.id,
+                  url: toAbsoluteMediaUrl(reelMedia.url, getApiOrigin()),
+                  thumbnail_url: reelMedia.thumbnail_url
+                    ? toAbsoluteMediaUrl(reelMedia.thumbnail_url, getApiOrigin())
+                    : null,
+                }
+              : null,
             services: [
               a.price_30min && { name: 'Incontro 30 min', price: Number(a.price_30min), duration: '30min' },
               a.price_1hour && { name: 'Incontro 1 ora', price: Number(a.price_1hour), duration: '1h' },
@@ -362,6 +380,40 @@ const ProfilePageClient = ({ id }) => {
           </div>
         </div>
       </div>
+
+      {profile.reel && (
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <div className="flex items-center gap-2 text-gray-900 font-semibold">
+                <Film className="w-5 h-5 text-pink-500" />
+                Reel
+              </div>
+              <Link
+                href={`/reels?announcement=${profile.id}`}
+                className="text-sm font-medium text-pink-500 hover:text-pink-600"
+              >
+                Apri a schermo intero
+              </Link>
+            </div>
+            <div className="relative aspect-[9/16] max-h-[70vh] mx-auto bg-black">
+              <OptimizedVideo
+                media={{
+                  url: profile.reel.url,
+                  thumbnail_url: profile.reel.thumbnail_url,
+                  type: 'video',
+                }}
+                className="w-full h-full object-cover"
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Media Gallery stile Instagram */}
       <main className="max-w-6xl mx-auto px-4 py-4 space-y-4 lg:space-y-6">

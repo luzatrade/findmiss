@@ -23,7 +23,8 @@ const API_URL = getApiUrl()
 export default function ReelsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const startIndex = parseInt(searchParams.get('start') || '0')
+  const startIndex = parseInt(searchParams.get('start') || '0', 10)
+  const focusAnnouncementId = searchParams.get('announcement') || searchParams.get('profile')
   
   const [reels, setReels] = useState([])
   const [currentIndex, setCurrentIndex] = useState(startIndex)
@@ -143,6 +144,15 @@ export default function ReelsPage() {
           }
         })
         setReels(normalized)
+
+        if (focusAnnouncementId) {
+          const idx = normalized.findIndex((item) => item.id === focusAnnouncementId)
+          if (idx >= 0) {
+            setCurrentIndex(idx)
+          }
+        } else if (startIndex > 0 && startIndex < normalized.length) {
+          setCurrentIndex(startIndex)
+        }
       }
     } catch (error) {
       console.error('Errore:', error)
@@ -363,7 +373,7 @@ export default function ReelsPage() {
           announcement_id: '',
         })
         await loadReels()
-        alert('Reel caricato! Se l\'annuncio è in approvazione, il reel sarà visibile dopo l\'approvazione.')
+        alert('Reel pubblicato! Ora è visibile nel feed Reels.')
         return
       }
 
@@ -415,7 +425,7 @@ export default function ReelsPage() {
         })
 
         await loadReels()
-        alert('Reel inviato! Sarà visibile nel feed quando l\'annuncio risulta attivo.')
+        alert('Reel pubblicato! Ora è visibile nel feed Reels.')
       } else {
         setUploadError(announcementData.error || 'Errore nella pubblicazione')
       }

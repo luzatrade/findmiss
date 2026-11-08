@@ -41,7 +41,7 @@ router.get('/', optionalAuth, async (req, res) => {
       include: {
         city: { select: { id: true, name: true, slug: true } },
         category: { select: { id: true, name: true, slug: true } },
-        media: { where: { is_reel: true }, take: 1 },
+        media: { where: { is_reel: true, type: 'video' }, orderBy: { created_at: 'desc' }, take: 1 },
         user: { select: { id: true, nickname: true } },
         reel_stats: {
           orderBy: { date: 'desc' },
@@ -92,7 +92,8 @@ router.get('/', optionalAuth, async (req, res) => {
       }
 
       // Recency score (più recente = score più alto)
-      const recencyDays = (Date.now() - new Date(ann.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      const reelUploadedAt = ann.media[0]?.created_at || ann.created_at;
+      const recencyDays = (Date.now() - new Date(reelUploadedAt).getTime()) / (1000 * 60 * 60 * 24);
       const recencyScore = Math.max(0, 100 - (recencyDays * 1.5));
 
       // Verified boost
@@ -117,6 +118,7 @@ router.get('/', optionalAuth, async (req, res) => {
         reel_likes: ann.reel_likes,
         video: ann.media[0] || null,
         media_id: ann.media[0]?.id || null,
+        reel_uploaded_at: ann.media[0]?.created_at || ann.created_at,
         user_id: ann.user_id,
         user: ann.user,
         score: totalScore,

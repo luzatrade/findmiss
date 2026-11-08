@@ -154,7 +154,7 @@ export default function MyAnnouncementsPage() {
     try {
       await uploadReelToAnnouncement(token, announcementId, file)
       await fetchMyAnnouncements()
-      alert('Reel caricato. Sarà nel feed quando l\'annuncio è attivo.')
+      alert('Reel pubblicato nel feed Reels e visibile sul profilo.')
     } catch (err) {
       alert(err.message || 'Errore caricamento reel')
     } finally {

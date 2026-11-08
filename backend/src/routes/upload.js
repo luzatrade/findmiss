@@ -9,6 +9,21 @@ const { processImage } = require('../services/imageCompression');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+function isReelsAutoPublishEnabled() {
+  return process.env.REELS_AUTO_PUBLISH !== 'false';
+}
+
+async function publishReelToPublicFeed(announcementId) {
+  if (!isReelsAutoPublishEnabled()) return;
+  await prisma.announcement.update({
+    where: { id: announcementId },
+    data: {
+      status: 'active',
+      has_video: true,
+    },
+  });
+}
+
 const UPLOADS_ROOT = process.env.UPLOADS_PATH
   ? path.resolve(process.env.UPLOADS_PATH)
   : path.join(__dirname, '../../uploads');
@@ -256,6 +271,13 @@ async function persistAnnouncementMedia(req, res) {
     const reelUpload = is_reel === 'true' || is_reel === true;
     const createdMedia = [];
 
+    if (reelUpload) {
+      await prisma.media.updateMany({
+        where: { announcement_id, is_reel: true, type: 'video' },
+        data: { is_reel: false },
+      });
+    }
+
     for (let index = 0; index < files.length; index += 1) {
       const prepared = await buildUploadedFileRecord(
         files[index],
@@ -288,12 +310,22 @@ async function persistAnnouncementMedia(req, res) {
       createdMedia.push(record);
     }
 
+    const publishedReel = reelUpload && createdMedia.some((item) => item.is_reel);
+
     await prisma.announcement.update({
       where: { id: announcement_id },
-      data: { has_video: hasVideo },
+      data: { has_video: hasVideo || publishedReel },
     });
 
-    return res.json({ success: true, data: createdMedia });
+    if (publishedReel) {
+      await publishReelToPublicFeed(announcement_id);
+    }
+
+    return res.json({
+      success: true,
+      data: createdMedia,
+      published_to_reels: Boolean(publishedReel && isReelsAutoPublishEnabled()),
+    });
   } catch (error) {
     console.error('Errore upload media annuncio:', error);
     const message =

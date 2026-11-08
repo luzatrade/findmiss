@@ -22,7 +22,11 @@ export default function CitySearchDropdown({
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const results = await fetchCities({ search: query, limit: 40 })
+        const trimmed = String(query || '').trim()
+        const results = await fetchCities({
+          search: trimmed,
+          limit: trimmed.length > 0 ? 60 : 150,
+        })
         if (!cancelled) setCities(results)
       } catch (error) {
         console.error('Errore caricamento città:', error)

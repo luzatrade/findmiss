@@ -1,6 +1,6 @@
 import { getApiUrl } from './runtime-api'
 
-export async function fetchCities({ search = '', limit = 30 } = {}) {
+export async function fetchCities({ search = '', limit = 150 } = {}) {
   const API_URL = getApiUrl()
   const q = String(search || '').trim()
   const params = new URLSearchParams({ limit: String(limit) })

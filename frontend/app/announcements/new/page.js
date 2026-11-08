@@ -10,33 +10,12 @@ import {
 
 import { getApiUrl } from '../../../lib/runtime-api'
 import { validateMediaFile } from '../../../lib/media'
+import { uploadAnnouncementMediaFiles } from '../../../lib/mediaUpload'
 import CityPickerField from '../../../components/CityPickerField'
 import { buildAuthHref } from '../../../lib/authRedirect'
 import { syncStoredUserFromProfile } from '../../../lib/syncStoredUser'
 
 const API_URL = getApiUrl()
-
-async function uploadAnnouncementMedia(token, announcementId, files, options = {}) {
-  const uploadFormData = new FormData()
-  files.forEach((file) => uploadFormData.append('files', file))
-  uploadFormData.append('announcement_id', announcementId)
-  if (options.isReel) {
-    uploadFormData.append('is_reel', 'true')
-  }
-
-  const uploadRes = await fetch(`${API_URL}/upload/media`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: uploadFormData,
-  })
-
-  const uploadData = await uploadRes.json()
-  if (!uploadRes.ok || !uploadData.success) {
-    throw new Error(uploadData.error || 'Errore nel caricamento foto/video')
-  }
-
-  return uploadData.data
-}
 
 // Categorie disponibili
 const CATEGORIES = [
@@ -277,7 +256,7 @@ export default function NewAnnouncementPage() {
 
       if (data.success && data.data?.id) {
         if (photos.length > 0) {
-          await uploadAnnouncementMedia(token, data.data.id, photos)
+          await uploadAnnouncementMediaFiles(token, data.data.id, photos)
         }
 
         router.push('/my-announcements?created=true&pending=1')

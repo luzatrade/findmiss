@@ -4,9 +4,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Camera, Image, X, Loader2, Upload, Type, Palette } from 'lucide-react'
 
-import { getApiUrl } from '../../../lib/runtime-api'
+import { getApiUrl, toAbsoluteMediaUrl, getApiOrigin } from '../../../lib/runtime-api'
 import { buildAuthHref } from '../../../lib/authRedirect'
 import { syncStoredUserFromProfile } from '../../../lib/syncStoredUser'
+import { uploadPublicMediaFile } from '../../../lib/mediaUpload'
 
 const API_URL = getApiUrl()
 
@@ -123,29 +124,11 @@ export default function CreateStoryPage() {
     try {
       const token = localStorage.getItem('token')
       
-      // Upload media
-      const formData = new FormData()
-      const uploadName =
-        mediaFile instanceof File && mediaFile.name
-          ? mediaFile.name
-          : mediaType === 'video'
-            ? 'story.mp4'
-            : 'story.jpg'
-      formData.append('file', mediaFile, uploadName)
-      formData.append('type', 'story')
-      
-      const uploadRes = await fetch(`${API_URL}/upload`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      })
-      
-      const uploadData = await uploadRes.json()
-      
-      if (!uploadData.success) {
-        throw new Error(uploadData.error || 'Errore upload')
-      }
-      
+      const uploaded = await uploadPublicMediaFile(token, mediaFile)
+      const apiOrigin = getApiOrigin()
+      const mediaUrl = toAbsoluteMediaUrl(uploaded.url, apiOrigin)
+      const thumbUrl = toAbsoluteMediaUrl(uploaded.thumbnail_url || uploaded.url, apiOrigin)
+
       // Create story
       const storyRes = await fetch(`${API_URL}/stories`, {
         method: 'POST',
@@ -155,8 +138,8 @@ export default function CreateStoryPage() {
         },
         body: JSON.stringify({
           type: mediaType,
-          media_url: uploadData.data.url,
-          thumbnail_url: uploadData.data.thumbnail_url,
+          media_url: mediaUrl,
+          thumbnail_url: thumbUrl,
           text_overlay: text || null,
           text_color: textColor,
           bg_color: bgColor

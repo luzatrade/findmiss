@@ -34,9 +34,18 @@ export function getWsUrl() {
   return getApiOrigin()
 }
 
+function wrapPrivateVercelBlobUrl(url) {
+  if (typeof url !== 'string' || !url.includes('.private.blob.vercel-storage.com/')) {
+    return url
+  }
+  return `/api/media/serve?url=${encodeURIComponent(url)}`
+}
+
 export function toAbsoluteMediaUrl(value, apiOrigin = getApiOrigin(), fallback = 'https://via.placeholder.com/300x400?text=No+Image') {
   if (!value || typeof value !== 'string') return fallback
-  if (value.startsWith('http://') || value.startsWith('https://')) return value
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return wrapPrivateVercelBlobUrl(value)
+  }
   if (value.startsWith('/')) return `${apiOrigin}${value}`
   return `${apiOrigin}/${value}`
 }

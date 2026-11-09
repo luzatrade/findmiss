@@ -14,13 +14,22 @@ async function verifyAuthToken(token) {
     throw new Error('Accesso richiesto')
   }
 
-  const profileRes = await fetch(`${API_URL}/users/profile`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store',
-  })
-  const profileData = await profileRes.json()
+  let profileRes
+  try {
+    profileRes = await fetch(`${API_URL}/users/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    })
+  } catch {
+    throw new Error('Server API non raggiungibile. Riprova tra qualche secondo.')
+  }
+
+  const profileData = await profileRes.json().catch(() => ({}))
+  if (profileRes.status >= 500) {
+    throw new Error('Server API temporaneamente non disponibile. Riprova tra qualche secondo.')
+  }
   if (!profileRes.ok || !profileData.success) {
-    throw new Error('Sessione non valida')
+    throw new Error('Sessione non valida. Effettua di nuovo l\'accesso.')
   }
   return profileData.data
 }
@@ -36,25 +45,25 @@ export async function POST(request) {
         const payload = clientPayload ? JSON.parse(clientPayload) : {}
         await verifyAuthToken(payload.token)
 
-        const token = await issueSignedToken({
+        const validUntil = Date.now() + 60 * 60 * 1000
+        const issued = await issueSignedToken({
           pathname,
           operations: ['put'],
-          allowedContentTypes: BLOB_ALLOWED_CONTENT_TYPES,
+          validUntil,
           maximumSizeInBytes: BLOB_MAX_SIZE_BYTES,
-          validUntil: Date.now() + 60 * 60 * 1000,
         })
 
         return {
-          token,
+          token: issued,
           urlOptions: {
             allowedContentTypes: BLOB_ALLOWED_CONTENT_TYPES,
             maximumSizeInBytes: BLOB_MAX_SIZE_BYTES,
+            validUntil,
             addRandomSuffix: true,
             allowOverwrite: false,
           },
         }
       },
-      onUploadCompleted: async () => {},
     })
 
     return NextResponse.json(jsonResponse)

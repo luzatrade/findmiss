@@ -1,6 +1,10 @@
 import { uploadPresigned } from '@vercel/blob/client'
 import { getApiUrl } from './runtime-api'
-import { normalizeUploadFile } from './normalizeUploadFile'
+import {
+  inferUploadContentType,
+  normalizeUploadFile,
+  withInferredContentType,
+} from './normalizeUploadFile'
 import { formatMediaUploadError } from './mediaUploadFeedback'
 
 const API_URL = getApiUrl()
@@ -49,16 +53,20 @@ function safeFilename(name) {
 }
 
 async function uploadFileToVercelBlob(token, file) {
+  const uploadable = withInferredContentType(file)
+  const contentType = inferUploadContentType(uploadable)
   const userId = await fetchUserId(token)
-  const folder = file.type?.startsWith('video/') ? 'videos' : 'images'
-  const pathname = `findmiss/${userId}/${folder}/${Date.now()}-${safeFilename(file.name)}`
+  const folder = contentType.startsWith('video/') ? 'videos' : 'images'
+  const pathname = `findmiss/${userId}/${folder}/${Date.now()}-${safeFilename(uploadable.name)}`
 
   try {
-    const blob = await uploadPresigned(pathname, file, {
+    const blob = await uploadPresigned(pathname, uploadable, {
       access: 'public',
       handleUploadUrl: '/api/media/upload',
       clientPayload: JSON.stringify({ token }),
-      multipart: Boolean(file.size && file.size > 4.5 * 1024 * 1024),
+      contentType,
+      // Presigned: il browser carica direttamente su Blob (non passa dal body della Function).
+      multipart: false,
     })
     return blob
   } catch (error) {

@@ -11,6 +11,12 @@ export function formatMediaUploadError(error, context = {}) {
   if (/blob non configurato|blob store|storage non configurato/i.test(raw)) {
     return 'Storage media non configurato. Riprova più tardi o contatta l\'assistenza.'
   }
+  if (/failed to retrieve the presigned url/i.test(raw)) {
+    return 'Errore nello storage media (URL di caricamento). Ricarica la pagina, verifica la connessione e riprova.'
+  }
+  if (/allowed content type|content.type|tipo non consentito/i.test(raw)) {
+    return 'Formato file non accettato. Usa JPG, PNG, WebP, GIF, HEIC o MP4.'
+  }
   if (/URL media non consentito|non accettato dal server/i.test(raw)) {
     return 'Il file è stato caricato ma il server non l\'ha accettato. Riprova con JPG, PNG, WebP o MP4.'
   }

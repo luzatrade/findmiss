@@ -5,6 +5,12 @@ describe('formatMediaUploadError', () => {
     expect(formatMediaUploadError(new Error('Sessione non valida'))).toMatch(/Sessione scaduta/)
   })
 
+  test('maps presigned URL retrieval errors', () => {
+    expect(
+      formatMediaUploadError(new Error('Failed to retrieve the presigned URL'))
+    ).toMatch(/Errore nello storage media/)
+  })
+
   test('includes file index in message', () => {
     expect(
       formatMediaUploadError(new Error('Upload failed'), {

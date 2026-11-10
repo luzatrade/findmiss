@@ -11,6 +11,11 @@ import {
 import { getApiUrl } from '../../../lib/runtime-api'
 import { validateMediaFile } from '../../../lib/media'
 import { uploadAnnouncementMediaFiles } from '../../../lib/mediaUpload'
+import {
+  buildMediaUploadSuccessMessage,
+  formatMediaUploadError,
+} from '../../../lib/mediaUploadFeedback'
+import { useToast } from '../../../components/ToastProvider'
 import CityPickerField from '../../../components/CityPickerField'
 import { buildAuthHref } from '../../../lib/authRedirect'
 import { syncStoredUserFromProfile } from '../../../lib/syncStoredUser'
@@ -27,6 +32,7 @@ const CATEGORIES = [
 
 export default function NewAnnouncementPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   
   // Form data
   const [formData, setFormData] = useState({
@@ -255,17 +261,53 @@ export default function NewAnnouncementPage() {
       const data = await res.json()
 
       if (data.success && data.data?.id) {
+        const announcement = data.data
+        let uploadedCount = 0
+
         if (photos.length > 0) {
-          await uploadAnnouncementMediaFiles(token, data.data.id, photos)
+          try {
+            const uploadResult = await uploadAnnouncementMediaFiles(
+              token,
+              announcement.id,
+              photos
+            )
+            uploadedCount = uploadResult?.saved?.length ?? photos.length
+          } catch (uploadErr) {
+            const message = formatMediaUploadError(uploadErr)
+            showToast({
+              type: 'error',
+              message: `Annuncio creato, ma le foto NON sono state caricate: ${message}`,
+              duration: 8000,
+            })
+            setErrors({
+              submit: `Annuncio creato senza foto: ${message}`,
+            })
+            router.push(`/announcements/${announcement.id}/edit?mediaError=1`)
+            return
+          }
         }
 
-        router.push('/my-announcements?created=true&pending=1')
+        showToast({
+          type: 'success',
+          message: buildMediaUploadSuccessMessage({
+            count: uploadedCount || photos.length,
+            announcementStatus: announcement.status,
+          }),
+          duration: 6000,
+        })
+
+        const pendingQuery = announcement.status === 'pending' ? '&pending=1' : '&active=1'
+        router.push(`/my-announcements?created=1${pendingQuery}`)
       } else {
-        setErrors({ submit: data.error || 'Errore nella creazione' })
+        const message = data.error || 'Errore nella creazione'
+        setErrors({ submit: message })
+        showToast({ type: 'error', message, duration: 5000 })
       }
     } catch (err) {
       console.error('Errore:', err)
-      setErrors({ submit: err.message || 'Errore di rete, riprova' })
+      const message = formatMediaUploadError(err)
+      setErrors({ submit: message })
+      showToast({ type: 'error', message, duration: 6000 })
     } finally {
       setIsSubmitting(false)
     }

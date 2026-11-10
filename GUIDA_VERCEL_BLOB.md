@@ -9,10 +9,10 @@
 ## Setup Vercel (obbligatorio)
 
 1. Progetto **frontend** su Vercel → **Storage** → **Blob** → collega al progetto.
-2. Vercel collega lo store (OIDC + opzionale `BLOB_READ_WRITE_TOKEN`).
+2. Vercel collega lo store in OIDC (`BLOB_STORE_ID` + `BLOB_WEBHOOK_PUBLIC_KEY`). Il token statico `BLOB_READ_WRITE_TOKEN` **non** serve per gli upload dal browser (usano URL presigned).
 3. Automazione (opzionale): `FINDMISS_VERCEL_API_TOKEN=... node scripts/vercel-blob-setup.mjs`
-3. Variabile consigliata: `NEXT_PUBLIC_API_URL=https://api.findmiss.it/api` (se non già presente).
-4. Opzionale: `NEXT_PUBLIC_USE_VERCEL_BLOB=false` per tornare all’upload Railway (sconsigliato in prod).
+4. Variabile consigliata: `NEXT_PUBLIC_API_URL=https://api.findmiss.it/api` (se non già presente).
+5. Opzionale: `NEXT_PUBLIC_USE_VERCEL_BLOB=false` per tornare all’upload Railway (sconsigliato in prod).
 
 ## Setup Railway (backend)
 

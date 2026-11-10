@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Camera, Image, X, Loader2, Upload, Type, Palette } from 'lucide-react'
 
-import { getApiUrl, toAbsoluteMediaUrl, getApiOrigin } from '../../../lib/runtime-api'
+import { getApiUrl } from '../../../lib/runtime-api'
 import { buildAuthHref } from '../../../lib/authRedirect'
 import { syncStoredUserFromProfile } from '../../../lib/syncStoredUser'
 import { uploadPublicMediaFile } from '../../../lib/mediaUpload'
@@ -165,9 +165,8 @@ export default function CreateStoryPage() {
       const token = localStorage.getItem('token')
       
       const uploaded = await uploadPublicMediaFile(token, mediaFile)
-      const apiOrigin = getApiOrigin()
-      const mediaUrl = toAbsoluteMediaUrl(uploaded.url, apiOrigin)
-      const thumbUrl = toAbsoluteMediaUrl(uploaded.thumbnail_url || uploaded.url, apiOrigin)
+      const mediaUrl = uploaded.url
+      const thumbUrl = uploaded.thumbnail_url || uploaded.url
 
       // Create story
       const storyRes = await fetch(`${API_URL}/stories`, {

@@ -289,6 +289,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
+      <h1 className="sr-only">Annunci e profili verificati in Italia</h1>
       {/* Header */}
       <div className="sticky top-0 bg-white/95 backdrop-blur-lg border-b border-gray-200 z-20 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">

@@ -248,3 +248,65 @@ export function websiteJsonLd() {
     },
   }
 }
+
+export function faqJsonLd(entries) {
+  const items = (entries || []).filter((item) => item?.question && item?.answer)
+  if (items.length === 0) return null
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map(({ question, answer }) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: answer,
+      },
+    })),
+  }
+}
+
+/** Metadata filtri: canonical sempre /filtri; noindex sulle URL con parametri di ricerca. */
+export function filtriMetadataFromSearchParams(searchParams = {}) {
+  const city = typeof searchParams.city === 'string' ? searchParams.city.trim() : ''
+  const q = typeof searchParams.q === 'string' ? searchParams.q.trim() : ''
+  const hasFacet = Boolean(city || q)
+
+  if (!hasFacet) {
+    return buildMetadata({
+      title: 'Filtri e ricerca annunci',
+      description:
+        'Cerca annunci e profili in Italia su Find Miss: filtra per città, categoria, età e prezzo dalla pagina di ricerca.',
+      path: '/filtri',
+      keywords: ['ricerca annunci', 'filtri', 'profili Italia', 'Find Miss'],
+    })
+  }
+
+  const title = city ? `Ricerca annunci a ${city}` : `Ricerca: ${truncate(q, 60)}`
+  const description = city
+    ? `Sfoglia annunci e profili disponibili a ${city}. Usa i filtri per categoria e disponibilità su Find Miss.`
+    : `Risultati di ricerca per «${truncate(q, 80)}» su Find Miss. Per combinazioni avanzate usa i filtri dalla pagina di ricerca.`
+
+  return buildMetadata({
+    title,
+    description,
+    path: '/filtri',
+    noIndex: true,
+  })
+}
+
+export async function fetchAnnouncementsByCitySlug(slug, limit = 24) {
+  if (!slug) return []
+  try {
+    const res = await fetch(
+      `${getApiUrl()}/announcements?city=${encodeURIComponent(slug)}&limit=${limit}&sort=recent`,
+      { next: { revalidate: 600 } }
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    if (!data?.success || !Array.isArray(data.data)) return []
+    return data.data
+  } catch {
+    return []
+  }
+}

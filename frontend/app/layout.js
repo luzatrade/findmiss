@@ -4,7 +4,14 @@ import { ToastProvider } from '../components/ToastProvider'
 import ClientProviders from './components/ClientProviders'
 import BottomNav from './components/BottomNav'
 import AgeVerification from './components/AgeVerification'
-import { buildMetadata, DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL, websiteJsonLd } from '../lib/seo'
+import {
+  buildMetadata,
+  DEFAULT_DESCRIPTION,
+  organizationJsonLd,
+  SITE_NAME,
+  SITE_URL,
+  websiteJsonLd,
+} from '../lib/seo'
 
 const homeMeta = buildMetadata({
   title: SITE_NAME,
@@ -48,7 +55,8 @@ export const viewport = {
 }
 
 export default function RootLayout({ children }) {
-  const jsonLd = websiteJsonLd()
+  const websiteLd = websiteJsonLd()
+  const organizationLd = organizationJsonLd()
 
   return (
     <html lang="it">
@@ -58,7 +66,11 @@ export default function RootLayout({ children }) {
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Tenor+Sans&display=swap" rel="stylesheet" />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
         />
       </head>
       <body className="font-outfit antialiased">

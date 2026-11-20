@@ -138,6 +138,32 @@ export default function PolicyPage() {
           </div>
         </section>
 
+        <section className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Guide e assistenza</h2>
+          <ul className="text-sm text-gray-600 space-y-2 list-disc pl-5">
+            <li>
+              <Link href="/faq" className="text-pink-600 hover:underline">
+                Domande frequenti
+              </Link>
+            </li>
+            <li>
+              <Link href="/come-funziona" className="text-pink-600 hover:underline">
+                Come funziona il sito
+              </Link>
+            </li>
+            <li>
+              <Link href="/sicurezza" className="text-pink-600 hover:underline">
+                Sicurezza e tutela 18+
+              </Link>
+            </li>
+            <li>
+              <Link href="/termini-condizioni.html" className="text-pink-600 hover:underline">
+                Termini e condizioni (testo completo)
+              </Link>
+            </li>
+          </ul>
+        </section>
+
         {/* Last updated */}
         <p className="text-center text-gray-400 text-sm py-4">
           Ultimo aggiornamento: Dicembre 2024

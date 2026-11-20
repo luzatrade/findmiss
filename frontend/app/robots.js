@@ -17,6 +17,7 @@ export default function robots() {
           '/payments',
           '/menu',
           '/profile/edit',
+          '/announcements/',
           '/announcements/new',
           '/announcements/*/edit',
           '/stories/create',

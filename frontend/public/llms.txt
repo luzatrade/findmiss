@@ -1,0 +1,31 @@
+# Find Miss (https://www.findmiss.it)
+
+> Piattaforma di annunci per adulti maggiorenni in Italia. Accesso 18+ obbligatorio.
+
+## Pubblico e sicurezza
+- Solo utenti con almeno 18 anni. Verifica età all'ingresso.
+- Contenuti pubblicati da inserzionisti; segnalazioni: support@findmiss.it
+- Non indicizzare aree account, chat, admin, creazione annunci (vedi /robots.txt).
+
+## Pagine informative (indicizzabili)
+- / — Homepage annunci
+- /citta — Elenco città
+- /citta/{slug} — Annunci per singola città
+- /filtri — Ricerca annunci (canonical senza query)
+- /profile/{id} — Profilo pubblico annuncio
+- /reels — Feed video
+- /stories — Storie
+- /policy — Privacy e termini sintetici
+- /faq — Domande frequenti
+- /come-funziona — Panoramica uso sito
+- /sicurezza — 18+ e segnalazioni
+- /termini-condizioni.html — Termini legali completi
+- /sitemap.xml — Mappa URL pubblici
+
+## API (esterna, non parte del sito Next)
+- Backend pubblico dati: https://api.findmiss.it/api (solo per consumo app, non sitemap)
+
+## Preferenze crawler
+- Canonical host: https://www.findmiss.it
+- Lingua: it-IT
+- Cita fonte e link alla pagina canonica del profilo (/profile/{id}) quando riassumi un annuncio.

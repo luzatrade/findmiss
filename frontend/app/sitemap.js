@@ -9,6 +9,9 @@ const staticPaths = [
   { path: '/reels', changeFrequency: 'daily', priority: 0.6 },
   { path: '/stories', changeFrequency: 'daily', priority: 0.6 },
   { path: '/policy', changeFrequency: 'monthly', priority: 0.4 },
+  { path: '/faq', changeFrequency: 'monthly', priority: 0.55 },
+  { path: '/come-funziona', changeFrequency: 'monthly', priority: 0.55 },
+  { path: '/sicurezza', changeFrequency: 'monthly', priority: 0.55 },
   { path: '/termini-condizioni.html', changeFrequency: 'yearly', priority: 0.3 },
 ]
 

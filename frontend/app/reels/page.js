@@ -20,11 +20,17 @@ import {
   fetchMyAnnouncements,
   uploadReelToAnnouncement,
 } from '../../lib/reelMedia'
+import { useToast } from '../../components/ToastProvider'
+import {
+  buildMediaUploadSuccessMessage,
+  formatMediaUploadError,
+} from '../../lib/mediaUploadFeedback'
 
 const API_URL = getApiUrl()
 
 export default function ReelsPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const searchParams = useSearchParams()
   const startIndex = parseInt(searchParams.get('start') || '0', 10)
   const focusAnnouncementId = searchParams.get('announcement') || searchParams.get('profile')
@@ -364,7 +370,11 @@ export default function ReelsPage() {
 
     try {
       if (uploadData.announcement_id) {
-        await uploadReelToAnnouncement(token, uploadData.announcement_id, uploadData.video)
+        const result = await uploadReelToAnnouncement(
+          token,
+          uploadData.announcement_id,
+          uploadData.video
+        )
         setShowUploadModal(false)
         setUploadData({
           video: null,
@@ -375,7 +385,15 @@ export default function ReelsPage() {
           announcement_id: '',
         })
         await loadReels()
-        alert('Reel pubblicato! Ora è visibile nel feed Reels.')
+        showToast({
+          type: 'success',
+          message: buildMediaUploadSuccessMessage({
+            kind: 'reel',
+            count: 1,
+            publishedToReels: Boolean(result?.publishedToReels),
+          }),
+          duration: 6000,
+        })
         return
       }
 
@@ -414,7 +432,11 @@ export default function ReelsPage() {
       const announcementData = await announcementRes.json()
 
       if (announcementData.success && announcementData.data?.id) {
-        await uploadReelToAnnouncement(token, announcementData.data.id, uploadData.video)
+        const result = await uploadReelToAnnouncement(
+          token,
+          announcementData.data.id,
+          uploadData.video
+        )
 
         setShowUploadModal(false)
         setUploadData({
@@ -427,13 +449,26 @@ export default function ReelsPage() {
         })
 
         await loadReels()
-        alert('Reel pubblicato! Ora è visibile nel feed Reels.')
+        showToast({
+          type: 'success',
+          message: buildMediaUploadSuccessMessage({
+            kind: 'reel',
+            count: 1,
+            announcementStatus: announcementData.data?.status,
+            publishedToReels: Boolean(result?.publishedToReels),
+          }),
+          duration: 6000,
+        })
       } else {
-        setUploadError(announcementData.error || 'Errore nella pubblicazione')
+        const message = announcementData.error || 'Errore nella pubblicazione'
+        setUploadError(message)
+        showToast({ type: 'error', message, duration: 6000 })
       }
     } catch (error) {
       console.error('Errore upload:', error)
-      setUploadError(error.message || 'Errore di rete, riprova')
+      const message = formatMediaUploadError(error)
+      setUploadError(message)
+      showToast({ type: 'error', message, duration: 7000 })
     } finally {
       setIsUploading(false)
     }

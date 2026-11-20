@@ -66,7 +66,7 @@ async function connectStore(storeId, projectId) {
     method: 'POST',
     body: JSON.stringify({
       projectId,
-      envVarPrefix: '',
+      envVarEnvironments: ['production', 'preview'],
     }),
   })
 }

@@ -1,6 +1,6 @@
 import { del } from '@vercel/blob'
 import { NextResponse } from 'next/server'
-import { isVercelBlobConfigured } from '../../../lib/blobRuntime'
+import { isVercelBlobConfigured } from '../../../../lib/blobRuntime'
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://api.findmiss.it/api').replace(/\/$/, '')
 

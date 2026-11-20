@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { 
   ArrowLeft, Camera, Trash2, Loader2, Save, AlertCircle,
@@ -10,11 +10,20 @@ import {
 import { getApiUrl, getApiOrigin, toAbsoluteMediaUrl } from '../../../../lib/runtime-api'
 import { buildAuthHref } from '../../../../lib/authRedirect'
 import { uploadAnnouncementMediaFiles } from '../../../../lib/mediaUpload'
+import {
+  buildMediaUploadSuccessMessage,
+  formatMediaUploadError,
+} from '../../../../lib/mediaUploadFeedback'
+import { useToast } from '../../../../components/ToastProvider'
+
 const API_URL = getApiUrl()
 
 export default function EditAnnouncementPage({ params }) {
   const announcementId = params.id
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { showToast } = useToast()
+  const mediaErrorFromRedirect = searchParams.get('mediaError') === '1'
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -165,17 +174,55 @@ export default function EditAnnouncementPage({ params }) {
       const data = await res.json()
       
       if (data.success) {
+        let uploadedCount = 0
         if (newPhotos.length > 0) {
-          await uploadAnnouncementMediaFiles(token, announcementId, newPhotos)
+          try {
+            const uploadResult = await uploadAnnouncementMediaFiles(
+              token,
+              announcementId,
+              newPhotos
+            )
+            uploadedCount = uploadResult?.saved?.length ?? newPhotos.length
+          } catch (uploadErr) {
+            const message = formatMediaUploadError(uploadErr)
+            setError(`Modifiche salvate, ma media NON caricati: ${message}`)
+            showToast({
+              type: 'error',
+              message: `Media non caricati: ${message}`,
+              duration: 8000,
+            })
+            return
+          }
         }
 
-        router.push('/my-announcements?updated=true')
+        if (uploadedCount > 0) {
+          showToast({
+            type: 'success',
+            message: buildMediaUploadSuccessMessage({
+              count: uploadedCount,
+              announcementStatus: formData.status || data.data?.status || 'active',
+            }),
+            duration: 6000,
+          })
+        } else {
+          showToast({
+            type: 'success',
+            message: 'Annuncio aggiornato.',
+            duration: 4000,
+          })
+        }
+
+        router.push('/my-announcements?updated=1')
       } else {
-        setError(data.error || 'Errore nel salvataggio')
+        const message = data.error || 'Errore nel salvataggio'
+        setError(message)
+        showToast({ type: 'error', message, duration: 5000 })
       }
     } catch (err) {
       console.error('Errore:', err)
-      setError(err.message || 'Errore di rete')
+      const message = formatMediaUploadError(err)
+      setError(message)
+      showToast({ type: 'error', message, duration: 6000 })
     } finally {
       setSaving(false)
     }
@@ -230,6 +277,14 @@ export default function EditAnnouncementPage({ params }) {
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm flex items-center gap-2">
             <AlertCircle size={18} />
             {error}
+          </div>
+        )}
+
+        {mediaErrorFromRedirect && !error && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-900 text-sm flex items-center gap-2">
+            <AlertCircle size={18} />
+            L&apos;annuncio è stato creato ma le foto non sono state caricate. Aggiungile qui sotto e
+            premi Salva.
           </div>
         )}
 

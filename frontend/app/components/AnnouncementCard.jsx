@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { MapPin, CheckCircle, Play, Star, Heart, Sparkles, Users, Video } from 'lucide-react';
+import { toAbsoluteMediaUrl } from '../../lib/runtime-api';
 
 const CATEGORY_BADGES = {
   miss: { label: 'Miss', class: 'badge-miss' },
@@ -39,7 +40,7 @@ export default function AnnouncementCard({ announcement, onClick }) {
     >
       <div className="relative aspect-[4/5]">
         <img 
-          src={primaryMedia?.url || 'https://picsum.photos/400/500'} 
+          src={toAbsoluteMediaUrl(primaryMedia?.url || primaryMedia?.thumbnail_url) || 'https://picsum.photos/400/500'} 
           alt={announcement.title} 
           className="w-full h-full object-cover"
         />

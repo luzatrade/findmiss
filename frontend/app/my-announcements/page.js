@@ -14,6 +14,8 @@ import { MEDIA_SIZES, validateMediaFile } from '../../lib/media'
 import { deleteReelMedia, uploadReelToAnnouncement } from '../../lib/reelMedia'
 import { isAdvertiserSearchProfileIncomplete } from '../../lib/announcementFilterProfile'
 import { buildAuthHref } from '../../lib/authRedirect'
+import { useToast } from '../../components/ToastProvider'
+import { buildMediaUploadSuccessMessage } from '../../lib/mediaUploadFeedback'
 
 const API_URL = getApiUrl()
 
@@ -21,6 +23,8 @@ export default function MyAnnouncementsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const showPendingNotice = searchParams.get('pending') === '1'
+  const showActiveNotice = searchParams.get('active') === '1'
+  const { showToast } = useToast()
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -40,6 +44,24 @@ export default function MyAnnouncementsPage() {
     }
     fetchMyAnnouncements()
   }, [])
+
+  useEffect(() => {
+    if (searchParams.get('created') === '1') {
+      showToast({
+        type: 'success',
+        message: showPendingNotice
+          ? 'Annuncio creato. In attesa di approvazione admin prima della homepage.'
+          : 'Annuncio creato con media salvati. Controlla l’anteprima qui sotto.',
+        duration: 6000,
+      })
+    } else if (searchParams.get('updated') === '1') {
+      showToast({
+        type: 'success',
+        message: 'Annuncio aggiornato.',
+        duration: 4000,
+      })
+    }
+  }, [searchParams, showPendingNotice, showToast])
 
   useEffect(() => {
     const loadAdvertiserSearchProfile = async () => {
@@ -153,11 +175,25 @@ export default function MyAnnouncementsPage() {
 
     setReelBusyId(announcementId)
     try {
-      await uploadReelToAnnouncement(token, announcementId, file)
+      const target = announcements.find((a) => a.id === announcementId)
+      const result = await uploadReelToAnnouncement(token, announcementId, file)
       await fetchMyAnnouncements()
-      alert('Reel pubblicato nel feed Reels e visibile sul profilo.')
+      showToast({
+        type: 'success',
+        message: buildMediaUploadSuccessMessage({
+          kind: 'reel',
+          count: 1,
+          announcementStatus: target?.status,
+          publishedToReels: Boolean(result?.publishedToReels),
+        }),
+        duration: 6000,
+      })
     } catch (err) {
-      alert(err.message || 'Errore caricamento reel')
+      showToast({
+        type: 'error',
+        message: err.message || 'Reel non caricato. Riprova.',
+        duration: 7000,
+      })
     } finally {
       setReelBusyId(null)
     }
@@ -299,7 +335,15 @@ export default function MyAnnouncementsPage() {
         {showPendingNotice && (
           <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 text-sm">
             Annuncio inviato. Resta in <strong>attesa di approvazione</strong> admin: comparirà in
-            homepage dopo l&apos;approvazione da Admin Panel.
+            homepage dopo l&apos;approvazione da Admin Panel. Le foto restano visibili qui in
+            &quot;I miei annunci&quot; e nel profilo.
+          </div>
+        )}
+
+        {showActiveNotice && (
+          <div className="bg-green-50 border border-green-200 text-green-900 rounded-xl p-4 text-sm">
+            Media salvati: se non vedi la foto nel riquadro sotto, aggiorna la pagina o apri{' '}
+            <strong>Modifica</strong> per ricaricare i file.
           </div>
         )}
         {/* Stats Cards */}
